@@ -1,16 +1,19 @@
 import React from 'react';
 import { Crown, Settings } from 'lucide-react';
+import logo from '../assets/logo.png';
+
 
 const Header = ({ currentPage, setCurrentPage }) => {
   return (
-    <header className="bg-gradient-to-r from-orange-600 via-red-500 to-purple-600 shadow-lg">
+    <header className="bg-transparent/60 shadow-lg">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Crown className="h-8 w-8 text-yellow-300" />
+          <img src={logo} alt="QR Code" className="w-20 h-10  mx-auto" />
+            {/* <Crown className="h-8 w-8 text-yellow-300" />
             <h1 className="text-2xl md:text-3xl font-bold text-white">
               🙏 Ganpati Bappa Collection 🙏
-            </h1>
+            </h1> */}
           </div>
           
           <nav className="flex space-x-4">

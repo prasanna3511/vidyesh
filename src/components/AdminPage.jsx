@@ -27,16 +27,16 @@ const GET_MURTI_HISTORY = gql`
 `;
 
 
-const AdminPage = ({ bappas, bookings, onAddBappa }) => {
+const AdminPage = ({ onAddBappa }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const { loading, error, data } = useQuery(GET_MURTI_HISTORY);
 
-  const bookedBappas = bappas.filter(bappa => bappa.booked);
-  const availableBappas = bappas.filter(bappa => !bappa.booked);
+  // const bookedBappas = bappas.filter(bappa => bappa.booked);
+  // const availableBappas = bappas.filter(bappa => !bappa.booked);
 
-  const getBookingDetails = (bappaId) => {
-    return bookings.find(booking => booking.bappaId === bappaId);
-  };
+  // const getBookingDetails = (bappaId) => {
+  //   return bookings.find(booking => booking.bappaId === bappaId);
+  // };
   const isAuthenticated = useAuthenticated();
   // const [showAddModal, setShowAddModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated);
@@ -49,6 +49,32 @@ const AdminPage = ({ bappas, bookings, onAddBappa }) => {
     );
   }
 
+  const murtiData = data?.murti_history || [];
+  // console.log("murtiData : ",murtiData)
+
+  const bappas = murtiData.map(item => ({
+    id: item.id,
+    name: item.murti_id,
+    size: item.size,
+    price: parseInt(item.final_price),
+    image: item.image || 'https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500',
+    booked: item.booking_status === 'booked',
+  }));
+
+  const bookings = murtiData
+    .filter(item => item.booking_status === 'booked')
+    .map(item => ({
+      bappaId: item.id,
+      fullName: item.customer_name,
+      phoneNumber: item.customer_phone,
+      bookedAt: item.created_at || new Date().toISOString(),
+    }));
+
+  const bookedBappas = bappas.filter(b => b.booked);
+  const availableBappas = bappas.filter(b => !b.booked);
+
+  const getBookingDetails = (bappaId) =>
+    bookings.find(booking => booking.bappaId === bappaId);
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
@@ -123,7 +149,7 @@ const AdminPage = ({ bappas, bookings, onAddBappa }) => {
                     <div className="flex-1">
                       <h4 className="font-bold text-lg text-gray-800">{bappa.name}</h4>
                       <p className="text-sm text-gray-600 mb-2">ID: #{bappa.id} | {bappa.size}</p>
-                      <p className="font-bold text-green-600">₹{bappa.price.toLocaleString()}</p>
+                      <p className="font-bold text-green-600">₹{bappa.final_price}</p>
                       
                       {booking && (
                         <div className="mt-3 space-y-1 text-sm">
@@ -178,7 +204,7 @@ const AdminPage = ({ bappas, bookings, onAddBappa }) => {
                   </div>
                   <p className="text-sm text-gray-600">ID: #{bappa.id}</p>
                   <p className="text-sm text-gray-600">{bappa.size}</p>
-                  <p className="font-bold text-green-600">₹{bappa.price.toLocaleString()}</p>
+                  <p className="font-bold text-green-600">₹{bappa.final_price}</p>
                 </div>
               </div>
             </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import UserPage from './components/UserPage';
 import AdminPage from './components/AdminPage';
 import Header from './components/Header';
+import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
+
 
 function App() {
   const [currentPage, setCurrentPage] = useState('user');
@@ -65,7 +67,9 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50">
+    <div className="min-h-screen bg-no-repeat bg-cover bg-center"
+    style={{ backgroundImage: `url(${backgroundImg})` }}
+    >
       <Header currentPage={currentPage} setCurrentPage={setCurrentPage} />
       
       {currentPage === 'user' ? (

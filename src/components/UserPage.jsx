@@ -1,61 +1,111 @@
-import React, { useState } from 'react';
-import BappaCard from './BappaCard';
-import PaymentModal from './PaymentModal';
+import React, { useEffect, useState } from "react";
+import BappaCard from "./BappaCard";
+import PaymentModal from "./PaymentModal";
+import { gql, useQuery } from "@apollo/client";
+import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
 
-const UserPage = ({ bappas, onBookBappa }) => {
+const GET_MURTI_HISTORY = gql`
+  query MyQuery {
+    murti_history {
+      id
+      murti_id
+      size
+      final_price
+      booking_status
+      image
+      customer_name
+      customer_phone
+      customer_email
+      paid_amount
+      discount_price
+      paid_amount_sc
+      suggestions
+      booked_by
+    }
+  }
+`;
+
+const UserPage = ({ onBookBappa }) => {
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
 
   const handleBuyNow = (bappa) => {
     setSelectedBappa(bappa);
     setShowPaymentModal(true);
   };
 
-  const handleBookingComplete = (bookingDetails) => {
+  const handleBookingComplete = async (bookingDetails) => {
     onBookBappa(selectedBappa.id, bookingDetails);
     setShowPaymentModal(false);
     setSelectedBappa(null);
+    await refetch();
   };
+  // useEffect(async()=>{
+  //   await refetch();
+  // },[])
+  if (loading) {
+    return (
+      <div className="text-center py-16 text-lg text-gray-600">
+        Loading Bappas...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-16 text-lg text-red-600">
+        Error loading data: {error.message}
+      </div>
+    );
+  }
+
+  const bappas = data?.murti_history || [];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h2 className="text-4xl md:text-5xl font-bold text-gradient bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-4">
-          Sacred Ganpati Collection
-        </h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Choose your beloved Ganpati Bappa for the auspicious festival. Each murti is crafted with devotion and care.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {bappas.map((bappa) => (
-          <BappaCard
-            key={bappa.id}
-            bappa={bappa}
-            onBuyNow={handleBuyNow}
-          />
-        ))}
-      </div>
-
-      {bappas.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-xl text-gray-500">No Bappas available at the moment</p>
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat"
+      // style={{ backgroundImage: `url(${backgroundImg})` }}
+    >
+      <div className="min-h-screen bg-black/60">
+        <div className="container mx-auto px-4 py-8 text-white">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-5xl font-bold mb-3 leading-snug md:leading-tight text-orange-400">
+              जय गणेश श्री गणेश
+            </h2>
+            <p className="text-lg text-gray-200 max-w-2xl mx-auto">
+            या पवित्र सणासाठी आपल्या लाडक्या गणपती बाप्पाची निवड करा. प्रत्येक मूर्ती भक्तीभावाने आणि प्रेमपूर्वक साकारलेली आहे.
+                        </p>
+          </div>
+  
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {bappas.map((bappa) => (
+              <BappaCard key={bappa.id} bappa={bappa} onBuyNow={handleBuyNow} />
+            ))}
+          </div>
+  
+          {bappas.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-xl text-gray-300">No Bappas available at the moment</p>
+            </div>
+          )}
+  
+          {showPaymentModal && (
+            <PaymentModal
+              bappa={selectedBappa}
+              onClose={() => {
+                setShowPaymentModal(false);
+                setSelectedBappa(null);
+              }}
+              onBookingComplete={handleBookingComplete}
+            />
+          )}
         </div>
-      )}
-
-      {showPaymentModal && (
-        <PaymentModal
-          bappa={selectedBappa}
-          onClose={() => {
-            setShowPaymentModal(false);
-            setSelectedBappa(null);
-          }}
-          onBookingComplete={handleBookingComplete}
-        />
-      )}
+      </div>
     </div>
   );
+  
 };
 
 export default UserPage;

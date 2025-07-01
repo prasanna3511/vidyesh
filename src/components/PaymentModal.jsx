@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, QrCode, Check, Download, Upload, User, Phone, Mail } from 'lucide-react';
 import jsPDF from 'jspdf';
+import qrImage from '../assets/qr.jpeg';
 
 const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
   const [step, setStep] = useState('qr'); // 'qr', 'form', 'receipt'
@@ -62,7 +63,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
     y += 10;
     doc.text(`Size: ${bappa.size}`, 20, y);
     y += 10;
-    doc.text(`Amount: ₹${bappa.price.toLocaleString()}`, 20, y);
+    doc.text(`Amount: ₹${bappa.final_price}`, 20, y);
     y += 20;
     
     doc.text('Customer Details:', 20, y);
@@ -132,7 +133,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
               <div>
                 <h4 className="font-bold text-lg">{bappa.name}</h4>
                 <p className="text-gray-600">{bappa.size}</p>
-                <p className="font-bold text-green-600">₹{bappa.price.toLocaleString()}</p>
+                <p className="font-bold text-green-600">₹{bappa.final_price}</p>
                 <p className="text-sm font-medium text-orange-600">Bappa ID: #{bappa.id}</p>
               </div>
             </div>
@@ -142,8 +143,11 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
           {step === 'qr' && (
             <div className="text-center space-y-6">
               <div className="bg-gray-100 rounded-xl p-8 mx-auto inline-block">
-                <QrCode className="h-32 w-32 text-gray-400 mx-auto" />
-                <p className="text-sm text-gray-500 mt-2">Scan to pay ₹{bappa.price.toLocaleString()}</p>
+                {/* <QrCode className="h-32 w-32 text-gray-400 mx-auto" /> */}
+                {/* <img source='../assets/qr.jpeg' /> */}
+                <img src={qrImage} alt="QR Code" className="w-40 h-40 object-cover mx-auto" />
+
+                <p className="text-sm text-gray-500 mt-2">Scan to pay ₹{bappa.final_price}</p>
               </div>
               <p className="text-gray-600">
                 Scan the QR code to make payment and proceed to the next step
