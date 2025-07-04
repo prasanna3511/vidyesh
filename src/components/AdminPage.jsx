@@ -56,9 +56,10 @@ const AdminPage = ({ onAddBappa }) => {
     id: item.id,
     name: item.murti_id,
     size: item.size,
-    price: parseInt(item.final_price),
+    price: item.final_price,
     image: item.image || 'https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500',
     booked: item.booking_status === 'booked',
+    booking_status:item.booking_status
   }));
 
   const bookings = murtiData
@@ -71,6 +72,7 @@ const AdminPage = ({ onAddBappa }) => {
     }));
 
   const bookedBappas = bappas.filter(b => b.booked);
+  console.log("booked bappas : ",bappas)
   const availableBappas = bappas.filter(b => !b.booked);
 
   const getBookingDetails = (bappaId) =>
@@ -144,12 +146,23 @@ const AdminPage = ({ onAddBappa }) => {
                     <img
                       src={bappa.image}
                       alt={bappa.name}
-                      className="w-20 h-20 rounded-lg object-cover"
+                      className="w-20 h-20 rounded-lg object-contain"
                     />
                     <div className="flex-1">
+                      <div style={{display:'flex', flexDirection:'row', justifyContent:'space-between'}}>
+
+                      
                       <h4 className="font-bold text-lg text-gray-800">{bappa.name}</h4>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      bappa.booked 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {bappa.booking_status}
+                    </span>
+                    </div>
                       <p className="text-sm text-gray-600 mb-2">ID: #{bappa.id} | {bappa.size}</p>
-                      <p className="font-bold text-green-600">₹{bappa.final_price}</p>
+                      <p className="font-bold text-green-600">₹{bappa.price}</p>
                       
                       {booking && (
                         <div className="mt-3 space-y-1 text-sm">
@@ -189,7 +202,7 @@ const AdminPage = ({ onAddBappa }) => {
                 <img
                   src={bappa.image}
                   alt={bappa.name}
-                  className="w-16 h-16 rounded-lg object-cover"
+                  className="w-16 h-16 rounded-lg object-contain"
                 />
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
@@ -199,12 +212,12 @@ const AdminPage = ({ onAddBappa }) => {
                         ? 'bg-green-100 text-green-700' 
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {bappa.booked ? 'Booked' : 'Available'}
+                      {bappa.booking_status}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">ID: #{bappa.id}</p>
                   <p className="text-sm text-gray-600">{bappa.size}</p>
-                  <p className="font-bold text-green-600">₹{bappa.final_price}</p>
+                  <p className="font-bold text-green-600">₹{bappa.price}</p>
                 </div>
               </div>
             </div>

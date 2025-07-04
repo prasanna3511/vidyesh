@@ -28,6 +28,7 @@ const GET_MURTI_HISTORY = gql`
 const UserPage = ({ onBookBappa }) => {
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [sizeFilter, setSizeFilter] = useState("");
 
   const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
 
@@ -78,9 +79,30 @@ const UserPage = ({ onBookBappa }) => {
             या पवित्र सणासाठी आपल्या लाडक्या गणपती बाप्पाची निवड करा. प्रत्येक मूर्ती भक्तीभावाने आणि प्रेमपूर्वक साकारलेली आहे.
                         </p>
           </div>
-  
+          <div className="flex justify-center mb-10">
+  <div className="w-64">
+    <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
+      Filter by Size
+    </label>
+    <select
+      name="size"
+      value={sizeFilter}
+      onChange={(e) => setSizeFilter(e.target.value)}
+      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"
+    >
+      <option value="">All Sizes</option>
+      {[9, 11, 12, 13, 14, 15, 18].map((value) => (
+        <option key={value} value={`${value} inches`}>
+          {value} inches
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {bappas.map((bappa) => (
+            {bappas.filter((bappa) => !sizeFilter || bappa.size === sizeFilter).map((bappa) => (
               <BappaCard key={bappa.id} bappa={bappa} onBuyNow={handleBuyNow} />
             ))}
           </div>

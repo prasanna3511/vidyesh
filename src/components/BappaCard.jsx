@@ -2,6 +2,7 @@ import React from 'react';
 import { ShoppingCart, Ruler, IndianRupee } from 'lucide-react';
 
 const BappaCard = ({ bappa, onBuyNow }) => {
+  console.log(JSON.stringify(bappa))
   return (
     <div className="bg-white/90 rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
       <div className="relative shadow-lg rounded-t-2xl overflow-hidden">
@@ -32,15 +33,15 @@ const BappaCard = ({ bappa, onBuyNow }) => {
         
         <button
           onClick={() => onBuyNow(bappa)}
-          disabled={bappa.booked}
+          disabled={(bappa.booking_status === 'booked' || bappa.booking_status === 'pending' )}
           className={`w-full py-3 px-6 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
-            bappa.booked
+            (bappa.booking_status === 'booked' || bappa.booking_status === 'pending' )
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-gradient-to-r from-orange-500 via-red-500 to-purple-500 text-white hover:from-orange-600 hover:via-red-600 hover:to-purple-600 transform hover:scale-105 shadow-lg hover:shadow-xl'
           }`}
         >
-          {bappa.booked ? (
-            <span>Already Booked</span>
+          {(bappa.booking_status === 'booked' || bappa.booking_status === 'pending' ) ? (
+            <span>{bappa.booking_status}</span>
           ) : (
             <>
               <ShoppingCart className="h-5 w-5" />
