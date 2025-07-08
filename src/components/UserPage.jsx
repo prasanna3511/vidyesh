@@ -72,12 +72,12 @@ const UserPage = ({ onBookBappa }) => {
       <div className="min-h-screen bg-black/60">
         <div className="container mx-auto px-4 py-8 text-white">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-bold mb-3 leading-snug md:leading-tight text-orange-400">
+            {/* <h2 className="text-3xl md:text-5xl font-bold mb-3 leading-snug md:leading-tight text-orange-400">
               जय गणेश श्री गणेश
-            </h2>
-            <p className="text-lg text-gray-200 max-w-2xl mx-auto">
+            </h2> */}
+            {/* <p className="text-lg text-gray-200 max-w-2xl mx-auto">
             या पवित्र सणासाठी आपल्या लाडक्या गणपती बाप्पाची निवड करा. प्रत्येक मूर्ती भक्तीभावाने आणि प्रेमपूर्वक साकारलेली आहे.
-                        </p>
+                        </p> */}
           </div>
           <div className="flex justify-center mb-10">
   <div className="w-64">

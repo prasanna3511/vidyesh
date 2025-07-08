@@ -1,9 +1,34 @@
-import React, { useState } from 'react';
-import { Plus, List, Calendar, User, Phone, IndianRupee } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Plus, List, Calendar, User, Phone, IndianRupee, Trash2 } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
 import { useAuthenticated } from '@nhost/react';
 import LoginModal from './LoginModal';
 import { gql, useQuery } from '@apollo/client';
+import { useMutation } from '@apollo/client';
+const DELETE_BAPPA = gql`
+  mutation DeleteBappa($id: Int!) {
+    delete_murti_history(where: { id: { _eq: $id } }) {
+      affected_rows
+    }
+  }
+`;
+
+
+const APPROVE_BAPPA = gql`
+  mutation ApproveBappa($id: Int!, $booking_status: String!) {
+    update_murti_history(
+      where: { id: { _eq: $id } }
+      _set: { booking_status: $booking_status }
+    ) {
+      returning {
+        id
+        booking_status
+        booked_by
+      }
+    }
+  }
+`;
+
 
 const GET_MURTI_HISTORY = gql`
   query MyQuery {
@@ -29,17 +54,26 @@ const GET_MURTI_HISTORY = gql`
 
 const AdminPage = ({ onAddBappa }) => {
   const [showAddModal, setShowAddModal] = useState(false);
-  const { loading, error, data } = useQuery(GET_MURTI_HISTORY);
+  const { loading, error, data , refetch } = useQuery(GET_MURTI_HISTORY);
+  const [approveBappa] = useMutation(APPROVE_BAPPA);
+  const [deleteBappa] = useMutation(DELETE_BAPPA);
 
-  // const bookedBappas = bappas.filter(bappa => bappa.booked);
-  // const availableBappas = bappas.filter(bappa => !bappa.booked);
 
-  // const getBookingDetails = (bappaId) => {
-  //   return bookings.find(booking => booking.bappaId === bappaId);
-  // };
   const isAuthenticated = useAuthenticated();
   // const [showAddModal, setShowAddModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated);
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this Bappa?")) {
+      try {
+        await deleteBappa({ variables: { id } });
+        await refetch(); // refresh data
+      } catch (error) {
+        console.error("Failed to delete Bappa:", error);
+        alert("Something went wrong while deleting!");
+      }
+    }
+  };
+  
 
   if (!isAuthenticated) {
     return (
@@ -59,7 +93,9 @@ const AdminPage = ({ onAddBappa }) => {
     price: item.final_price,
     image: item.image || 'https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500',
     booked: item.booking_status === 'booked',
-    booking_status:item.booking_status
+    booking_status:item.booking_status,
+    fullName:item.customer_name,
+    phoneNumber:item.customer_phone
   }));
 
   const bookings = murtiData
@@ -74,15 +110,35 @@ const AdminPage = ({ onAddBappa }) => {
   const bookedBappas = bappas.filter(b => b.booked);
   console.log("booked bappas : ",bappas)
   const availableBappas = bappas.filter(b => !b.booked);
-
+  const handleApprove = async (id) => {
+    try {
+      await approveBappa({
+        variables: {
+          id,
+          booking_status: "booked"
+        }
+      });
+  
+      // Optionally show a success message or toast here
+  
+      await refetch(); // Refresh data
+    } catch (err) {
+      console.error("Failed to approve Bappa:", err);
+      alert("Something went wrong while approving!");
+    }
+  };
+  
   const getBookingDetails = (bappaId) =>
     bookings.find(booking => booking.bappaId === bappaId);
+    useEffect(()=>{
+      refetch()
+    },[showAddModal])
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h2>
-          <p className="text-gray-600">Manage your Ganpati Bappa collection and bookings</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-200 mb-2">Admin Dashboard</h2>
+          <p className="text-gray-200">Manage your Ganpati Bappa collection and bookings</p>
         </div>
         
         <button
@@ -163,7 +219,7 @@ const AdminPage = ({ onAddBappa }) => {
                     </div>
                       <p className="text-sm text-gray-600 mb-2">ID: #{bappa.id} | {bappa.size}</p>
                       <p className="font-bold text-green-600">₹{bappa.price}</p>
-                      
+                   
                       {booking && (
                         <div className="mt-3 space-y-1 text-sm">
                           <div className="flex items-center space-x-2">
@@ -197,7 +253,17 @@ const AdminPage = ({ onAddBappa }) => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {bappas.map((bappa) => (
-            <div key={bappa.id} className={`border rounded-xl p-4 ${bappa.booked ? 'bg-green-50 border-green-200' : 'hover:shadow-md'} transition-all`}>
+            <div key={bappa.id} className={`relative border rounded-xl p-4 ${bappa.booked ? 'bg-green-50 border-green-200' : 'hover:shadow-md'} transition-all`}>
+
+              {/* {(bappa.booking_status === "pending"|| bappa.booking_status === "available") &&  */}
+    <button
+    onClick={() => handleDelete(bappa.id)}
+    className="absolute top-0 right-1 text-red-500 hover:text-red-700"
+    title="Delete"
+  >
+    <Trash2 className="w-5 h-5" />
+  </button>
+   {/* }  */}
               <div className="flex space-x-4">
                 <img
                   src={bappa.image}
@@ -218,6 +284,23 @@ const AdminPage = ({ onAddBappa }) => {
                   <p className="text-sm text-gray-600">ID: #{bappa.id}</p>
                   <p className="text-sm text-gray-600">{bappa.size}</p>
                   <p className="font-bold text-green-600">₹{bappa.price}</p>
+                  {bappa.booking_status === "pending" && <>
+                  <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span>{bappa.fullName}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Phone className="h-4 w-4 text-gray-500" />
+                            <span>{bappa.phoneNumber}</span>
+                          </div>
+        <button
+          className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+          onClick={() => handleApprove(bappa.id)}
+        >
+          Approve
+        </button>
+        </>
+      }
                 </div>
               </div>
             </div>

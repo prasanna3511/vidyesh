@@ -377,7 +377,7 @@
 
 
 import React, { useState } from 'react';
-import { X, Check, Download, Upload, User, Phone, Mail, Coins } from 'lucide-react';
+import { X, Check, Download, Upload, User, Phone, Mail, Coins, Clock } from 'lucide-react';
 import jsPDF from 'jspdf';
 import qrImage from '../assets/qr.jpeg';
 import { gql, useMutation } from '@apollo/client';
@@ -555,7 +555,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
                 <h4 className="font-bold text-lg">{bappa.name}</h4>
                 <p className="text-gray-600">{bappa.size}</p>
                 <p className="font-bold text-green-600">₹{bappa.final_price}</p>
-                <p className="text-sm font-medium text-orange-600">Bappa ID: #{bappa.id}</p>
+                {/* <p className="text-sm font-medium text-orange-600">Bappa ID: #{bappa.id}</p> */}
               </div>
             </div>
           </div>
@@ -566,10 +566,20 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
               <div className="bg-gray-100 rounded-xl p-8 mx-auto inline-block">
                 <img src={qrImage} alt="QR Code" className="w-40 h-40 object-cover mx-auto" />
                 <p className="text-sm text-gray-500 mt-2">Scan to pay</p>
+              {/* <button onClick={() => setStep('form')} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold"> */}
+              <a
+  href="upi://pay?pa=9420342516-1@okbizaxis&pn=SARVESH%20PANDURANG%20JOSHI%20U%2FG%20PANDURANG%20GURURAJ%20JOSHI&mc=5970&aid=uGICAgKDLx9zzOw&ver=01&mode=01&tr=BCR2DN7T6PW74XI"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="w-full block bg-green-600 text-white py-3 rounded-xl font-bold text-center mt-4"
+>
+  Pay via UPI App
+</a>
+              {/* </button> */}
               </div>
-              <p className="text-gray-600">Scan the QR code to make payment and proceed</p>
+              {/* <p className="text-gray-600">Scan the QR code to make payment or Pay Via</p> */}
               <button onClick={() => setStep('form')} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold">
-                Payment Completed ?
+                Have you Completed with Payment ?
               </button>
             </div>
           )}
@@ -600,11 +610,11 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
               </div>
               <div className="border-t pt-4 mt-4">
                 <label className="inline-flex items-center">
-                  <input type="checkbox" checked={formData.suggestionsEnabled} onChange={handleCheckboxChange} className="form-checkbox text-orange-600 mr-2" />
+                  {/* <input type="checkbox" checked={formData.suggestionsEnabled} onChange={handleCheckboxChange} className="form-checkbox text-orange-600 mr-2" /> */}
                   <span className="text-sm text-gray-700 font-medium">Give Your Suggestions</span>
                 </label>
-                {formData.suggestionsEnabled && (
-                  <div className="mt-4 space-y-2">
+                {/* {formData.suggestionsEnabled && ( */}
+                  <div className="mt-2 space-y-2">
                     {['जानवे काढणे', "हातावर 'श्री / ॐ'  काढणे", 'घरपोच सेवा (शुल्क लागू)'].map(option => (
                       <label key={option} className="flex items-center space-x-2">
                         <input type="checkbox" checked={formData.suggestions.includes(option)} onChange={() => handleSuggestionToggle(option)} className="form-checkbox text-orange-600" />
@@ -612,14 +622,14 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
                       </label>
                     ))}
                   </div>
-                )}
+                {/* )} */}
               </div>
               <button type="submit" className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-xl font-bold">Submit Booking Details</button>
             </form>
           )}
 
           {/* Receipt Step */}
-          {step === 'receipt' && (
+          {/* {step === 'receipt' && (
             <div className="text-center space-y-6">
               <div className="bg-green-50 border border-green-200 rounded-xl p-6">
                 <Check className="h-16 w-16 text-green-500 mx-auto mb-4" />
@@ -629,7 +639,34 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
               <button onClick={downloadReceipt} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Download Receipt</button>
               <button onClick={handleBookingComplete} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold">Complete Booking</button>
             </div>
-          )}
+          )} */}
+          {step === 'receipt' && (
+  <div className="text-center space-y-6">
+    <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-6">
+      <Clock className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+      <h4 className="text-xl font-bold text-yellow-700 mb-2">Waiting for Approval</h4>
+      <p className="text-yellow-600">
+        Your booking request has been sent for approval. We will contact you on WhatsApp shortly.
+        Thank you!
+      </p>
+    </div>
+
+    {/* <button
+      onClick={downloadReceipt}
+      className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold"
+    >
+      Download Receipt
+    </button> */}
+
+    <button
+      onClick={handleBookingComplete}
+      className="w-full bg-green-600 text-white py-3 rounded-xl font-bold"
+    >
+     Done
+    </button>
+  </div>
+)}
+
         </div>
       </div>
     </div>
