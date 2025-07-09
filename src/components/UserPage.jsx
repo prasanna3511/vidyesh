@@ -3,6 +3,7 @@ import BappaCard from "./BappaCard";
 import PaymentModal from "./PaymentModal";
 import { gql, useQuery } from "@apollo/client";
 import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
+import Contact from "./contact";
 
 const GET_MURTI_HISTORY = gql`
   query MyQuery {
@@ -29,6 +30,9 @@ const UserPage = ({ onBookBappa }) => {
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [sizeFilter, setSizeFilter] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [showSplash, setShowSplash] = useState(true);
+
 
   const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
 
@@ -43,13 +47,29 @@ const UserPage = ({ onBookBappa }) => {
     setSelectedBappa(null);
     await refetch();
   };
-  // useEffect(async()=>{
-  //   await refetch();
-  // },[])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   if (loading) {
     return (
       <div className="text-center py-16 text-lg text-gray-600">
         Loading Bappas...
+      </div>
+    );
+  }
+  if (showSplash) {
+    return (
+      // <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black flex items-center justify-center z-50 animate-fadeOut">
+
+        <img
+          src="src/assets/dagdusheth.jpg" // 👉 replace with actual image path
+          alt="Ganpati Splash"
+          className="w-full h-full object-cover"
+        />
       </div>
     );
   }
@@ -64,6 +84,22 @@ const UserPage = ({ onBookBappa }) => {
 
   const bappas = data?.murti_history || [];
 
+// First apply size filter, then search filter
+const filteredBappas = bappas
+  .filter((bappa) => !sizeFilter || bappa.size === sizeFilter)
+  .filter((bappa) =>
+    searchText.trim() === ""
+      ? true
+      : (bappa.murti_id || "")
+          .toLowerCase()
+          .includes(searchText.toLowerCase()) ||
+        (bappa.customer_email || "")
+          .toLowerCase()
+          .includes(searchText.toLowerCase()) ||
+        (bappa.size || "")
+          .toLowerCase()
+          .includes(searchText.toLowerCase())
+  );
   return (
     <div
       className="min-h-screen bg-cover bg-center bg-no-repeat"
@@ -72,14 +108,8 @@ const UserPage = ({ onBookBappa }) => {
       <div className="min-h-screen bg-black/60">
         <div className="container mx-auto px-4 py-8 text-white">
           <div className="text-center mb-12">
-            {/* <h2 className="text-3xl md:text-5xl font-bold mb-3 leading-snug md:leading-tight text-orange-400">
-              जय गणेश श्री गणेश
-            </h2> */}
-            {/* <p className="text-lg text-gray-200 max-w-2xl mx-auto">
-            या पवित्र सणासाठी आपल्या लाडक्या गणपती बाप्पाची निवड करा. प्रत्येक मूर्ती भक्तीभावाने आणि प्रेमपूर्वक साकारलेली आहे.
-                        </p> */}
-          </div>
-          <div className="flex justify-center mb-10">
+            <div className="flex flex-col md:flex-row justify-center gap-6 mb-10 items-center">
+  {/* Size Filter */}
   <div className="w-64">
     <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
       Filter by Size
@@ -98,16 +128,41 @@ const UserPage = ({ onBookBappa }) => {
       ))}
     </select>
   </div>
-</div>
+
+  {/* Search Bar */}
+  <div className="w-64">
+    <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
+      Search Murtis
+    </label>
+    <input
+      type="text"
+      placeholder="Search by name, email, size..."
+      value={searchText}
+      onChange={(e) => setSearchText(e.target.value)}
+      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"
+    />
+  </div>
+  </div>
+            {/* <h2 className="text-3xl md:text-5xl font-bold mb-3 leading-snug md:leading-tight text-orange-400">
+              जय गणेश श्री गणेश
+            </h2> */}
+            {/* <p className="text-lg text-gray-200 max-w-2xl mx-auto">
+            या पवित्र सणासाठी आपल्या लाडक्या गणपती बाप्पाची निवड करा. प्रत्येक मूर्ती भक्तीभावाने आणि प्रेमपूर्वक साकारलेली आहे.
+                        </p> */}
+          </div>
+       
 
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {bappas.filter((bappa) => !sizeFilter || bappa.size === sizeFilter).map((bappa) => (
+            {/* {bappas.filter((bappa) => !sizeFilter || bappa.size === sizeFilter).map((bappa) => (
               <BappaCard key={bappa.id} bappa={bappa} onBuyNow={handleBuyNow} />
-            ))}
+            ))} */}
+            {filteredBappas.map((bappa) => (
+  <BappaCard key={bappa.id} bappa={bappa} onBuyNow={handleBuyNow} />
+))}
           </div>
   
-          {bappas.length === 0 && (
+          {filteredBappas.length === 0 && (
             <div className="text-center py-16">
               <p className="text-xl text-gray-300">No Bappas available at the moment</p>
             </div>

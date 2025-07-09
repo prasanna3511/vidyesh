@@ -381,6 +381,8 @@ import { X, Check, Download, Upload, User, Phone, Mail, Coins, Clock } from 'luc
 import jsPDF from 'jspdf';
 import qrImage from '../assets/qr.jpeg';
 import { gql, useMutation } from '@apollo/client';
+import { saveAs } from 'file-saver';
+
 
 const UPDATE_MURTI_HISTORY = gql`
   mutation UpdateMurtiHistory(
@@ -438,6 +440,40 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
     }
   };
 
+  const handleDownloadImage = () => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.src = bappa.image;
+  
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+  
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0);
+  
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${bappa.name?.replace(/\s+/g, '_') || 'Ganpati_Bappa'}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg');
+    };
+  
+    image.onerror = () => {
+      alert('Failed to load image for download.');
+    };
+  };
+  
+  
+  
+  
+  
   const handleCheckboxChange = (e) => {
     const { checked } = e.target;
     setFormData(prev => ({
@@ -657,6 +693,12 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
     >
       Download Receipt
     </button> */}
+<button
+  onClick={handleDownloadImage}
+  className="mt-2 text-sm text-blue-600 underline hover:text-blue-800"
+>
+  Download Image
+</button>
 
     <button
       onClick={handleBookingComplete}

@@ -3,6 +3,7 @@ import UserPage from './components/UserPage';
 import AdminPage from './components/AdminPage';
 import Header from './components/Header';
 import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
+import Contact from './components/contact';
 
 
 function App() {
@@ -67,6 +68,8 @@ function App() {
   };
 
   return (
+    <div>
+
     <div className="min-h-screen bg-no-repeat bg-cover bg-center"
     style={{ backgroundImage: `url(${backgroundImg})` }}
     >
@@ -81,7 +84,11 @@ function App() {
           onAddBappa={addBappa} 
         />
       )}
+
     </div>
+          <Contact />
+    </div>
+
   );
 }
 
