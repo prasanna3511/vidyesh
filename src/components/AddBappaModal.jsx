@@ -106,7 +106,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
         <div className="sticky top-0 bg-gradient-to-r from-green-500 to-green-600 p-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-white flex items-center space-x-2">
             <Crown className="h-6 w-6" />
-            <span>Add New Bappa</span>
+            <span>Add New Murti</span>
           </h3>
           <button
             onClick={onClose}
@@ -148,7 +148,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
               <option value="" disabled>
                 Select Size
               </option>
-              {[9, 11, 12, 13, 14, 15, 18].map((value) => (
+              {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
                 <option value={`${value} inches`}> {value} inches</option>
               ))}
             </select>

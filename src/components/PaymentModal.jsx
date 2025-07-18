@@ -382,6 +382,7 @@ import jsPDF from 'jspdf';
 import qrImage from '../assets/qr.jpeg';
 import { gql, useMutation } from '@apollo/client';
 import { saveAs } from 'file-saver';
+import { useAuthenticated } from '@nhost/react';
 
 
 const UPDATE_MURTI_HISTORY = gql`
@@ -425,6 +426,8 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
     suggestions: [],
     suggestionsEnabled: false
   });
+  const isAuthenticated = useAuthenticated();
+
 
   const [updateMurtiHistory] = useMutation(UPDATE_MURTI_HISTORY);
 
@@ -439,35 +442,26 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
       setFormData(prev => ({ ...prev, paymentScreenshot: file }));
     }
   };
-
-  const handleDownloadImage = () => {
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.src = bappa.image;
-  
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-  
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, 0, 0);
-  
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${bappa.name?.replace(/\s+/g, '_') || 'Ganpati_Bappa'}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 'image/jpeg');
-    };
-  
-    image.onerror = () => {
-      alert('Failed to load image for download.');
-    };
+  const handleDownloadImage = async () => {
+    try {
+      const response = await fetch(bappa.image, {
+        mode: 'no-cors'
+      });
+      // Note: no-cors mode gives you an opaque response, so you can't access the blob
+      // This approach won't work for file-saver
+      
+      // Fallback to direct download
+      const link = document.createElement('a');
+      link.href = bappa.image;
+      link.download = `${bappa.name?.replace(/\s+/g, '_') || 'Ganpati_Bappa'}.jpg`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download failed:', error);
+      window.open(bappa.image, '_blank');
+    }
   };
   
   
@@ -544,12 +538,12 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
         variables: {
           _eq: parseInt(bappa.id),
           booked_by: 'Customer',
-          booking_status: 'pending',
+          booking_status: isAuthenticated? 'booked':'pending',
           customer_email: formData.email || '',
           customer_name: formData.fullName,
           customer_phone: parseFloat(formData.phoneNumber),
           paid_amount: parseFloat(formData.amount),
-          paid_amount_sc: formData.paymentScreenshot?.name || '',
+          paid_amount_sc: isAuthenticated ?"" :(formData.paymentScreenshot?.name || ''),
           suggestions: formData.suggestions.join(', ')
         }
       });
@@ -588,7 +582,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
             <div className="flex items-center space-x-4">
               <img src={bappa.image} alt={bappa.name} className="w-16 h-16 rounded-lg object-contain" />
               <div>
-                <h4 className="font-bold text-lg">{bappa.name}</h4>
+                <h4 className="font-bold text-lg text-gray-600">{bappa.murti_id}</h4>
                 <p className="text-gray-600">{bappa.size}</p>
                 <p className="font-bold text-green-600">₹{bappa.final_price}</p>
                 {/* <p className="text-sm font-medium text-orange-600">Bappa ID: #{bappa.id}</p> */}
@@ -611,6 +605,15 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
 >
   Pay via UPI App
 </a>
+
+{isAuthenticated && (
+  <button
+    onClick={() => setStep('form')}
+    className="mt-3 mb-1 w-full py-2 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold shadow"
+  >
+    Cash Payment
+  </button>
+)}
               {/* </button> */}
               </div>
               {/* <p className="text-gray-600">Scan the QR code to make payment or Pay Via</p> */}

@@ -121,7 +121,7 @@ const filteredBappas = bappas
       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"
     >
       <option value="">All Sizes</option>
-      {[9, 11, 12, 13, 14, 15, 18].map((value) => (
+      {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
         <option key={value} value={`${value} inches`}>
           {value} inches
         </option>

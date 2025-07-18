@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       animation: {
-        fadeOut: 'fadeOut 2s ease-in forwards',
-        slideDown: 'slideDown 2s ease-in-out forwards', // 👈 NEW
+        fadeOut: 'fadeOut 4s ease-in forwards',
+        slideDown: 'slideDown 4s ease-in-out forwards', // 👈 NEW
       },
       keyframes: {
         fadeOut: {

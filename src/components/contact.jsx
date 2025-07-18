@@ -30,7 +30,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <p className="text-orange-200 text-sm">फोन</p>
-                    <p className="text-white font-semibold">+91 9420 342516</p>
+                    <p className="text-white font-semibold">+91 9420 342516 (सर्वेश जोशी) </p>
                   </div>
                 </div>
 
@@ -163,7 +163,7 @@ const Contact = () => {
             गणपती बाप्पा मोरया! मंगलमूर्ती मोरया!
           </p>
           <p className="text-orange-300/60 text-sm mt-2">
-            © 2024 Bappa Murti. सर्व हक्क राखीव.
+            © 2025 Murti Kendra. सर्व हक्क राखीव.
           </p>
         </div>
       </div>

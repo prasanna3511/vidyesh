@@ -4,12 +4,14 @@ import AdminPage from './components/AdminPage';
 import Header from './components/Header';
 import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
 import Contact from './components/contact';
+import Advertisement from './components/Advertisement';
 
 
 function App() {
   const [currentPage, setCurrentPage] = useState('user');
   const [bappas, setBappas] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [showAd, setShowAd] = useState(true);
 
   // Initialize with some default Bappas
   useEffect(() => {
@@ -69,7 +71,7 @@ function App() {
 
   return (
     <div>
-
+ {showAd && <Advertisement onClose={() => setShowAd(false)} />}
     <div className="min-h-screen bg-no-repeat bg-cover bg-center"
     style={{ backgroundImage: `url(${backgroundImg})` }}
     >
