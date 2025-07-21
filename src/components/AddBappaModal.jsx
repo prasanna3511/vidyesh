@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Upload, Crown, Ruler, IndianRupee } from "lucide-react";
 import { gql, useMutation } from '@apollo/client';
 import  nhost from '../nhost';
+
 const INSERT_MURTI = gql`
   mutation InsertMurti($murti_id: String!, $final_price: String!, $size: String!, $booking_status: String!,$image: String!) {
     insert_murti_history(objects: {
@@ -18,13 +19,27 @@ const INSERT_MURTI = gql`
   }
 `;
 
+const INSERT_MURTI_IMAGE = gql`
+  mutation InsertMurtiImage($image_id: String!, $murti_id: Int!) {
+    insert_murti_images(objects: { image_id: $image_id, murti_id: $murti_id }) {
+      returning {
+        id
+        image_id
+        murti_id
+      }
+    }
+  }
+`;
 
 const AddBappaModal = ({ onClose, onAddBappa }) => {
+  const [insertMurtiImage] = useMutation(INSERT_MURTI_IMAGE);
+
   const [formData, setFormData] = useState({
     id: "",
     size: "",
     price: "",
-    image: "",
+    images: [], // array of base64 previews
+    imageFiles: [], // actual File objects
   });
   const [insertMurti] = useMutation(INSERT_MURTI);
 
@@ -36,20 +51,43 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
     }));
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFormData((prev) => ({
-          ...prev,
-          image: e.target.result,
-          imageFile: file 
-        }));
-      };
-      reader.readAsDataURL(file);
+  const handleImageChange = async (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+  
+    try {
+      const imagePreviews = await Promise.all(
+        files.map(
+          (file) =>
+            new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            })
+        )
+      );
+  
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...imagePreviews], // Append new images
+        imageFiles: [...prev.imageFiles, ...files], // Append new files
+      }));
+    } catch (error) {
+      console.error("Error reading files:", error);
+      alert("Error reading image files");
     }
   };
+
+  const removeImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+      imageFiles: prev.imageFiles.filter((_, i) => i !== index),
+    }));
+  };
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
   
@@ -57,45 +95,66 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
       alert("Please fill in all required fields");
       return;
     }
-    let imageUrl = "";
-
-    if (formData.imageFile) {
-      const result = await nhost.storage.upload({
-        file: formData.imageFile,
-        bucketId: 'default', // or custom bucket if you have one
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-
-      imageUrl = nhost.storage.getPublicUrl({ fileId: result.fileMetadata.id }) || ""; // you can also store result.fileMetadata.id
-    }
-    console.log("imageurl",imageUrl)
+  
+    let mainImageUrl = ""; // For insert_murti_history
+    const uploadedImageIds = [];
   
     try {
-      await insertMurti({
+      // Upload all images
+      for (let file of formData.imageFiles) {
+        const result = await nhost.storage.upload({
+          file,
+          bucketId: 'default',
+        });
+  
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+  
+        const publicUrl = nhost.storage.getPublicUrl({ fileId: result.fileMetadata.id });
+  
+        uploadedImageIds.push(result.fileMetadata.id);
+  
+        // Use the first image as main image
+        if (!mainImageUrl) {
+          mainImageUrl = publicUrl;
+        }
+      }
+  
+      // Insert main murti record
+      const { data } = await insertMurti({
         variables: {
           murti_id: formData.id,
           final_price: formData.price,
           size: formData.size,
-          booking_status: "available", // or use dynamic value if needed,
-          image:imageUrl
+          booking_status: "available",
+          image:" "
         },
       });
   
+      const murti_id = data.insert_murti_history.returning[0].id; // assuming it's an integer for murti_images
+  console.log("data : ",data)
+      // Insert image references
+      for (let image_id of uploadedImageIds) {
+        await insertMurtiImage({
+          variables: {
+            murti_id,
+            image_id,
+          },
+        });
+      }
+  
+      // Optional: callback for UI
       onAddBappa({
         name: formData.id,
         size: formData.size,
         price: parseInt(formData.price),
-        image:
-          formData.image ||
-          "https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500",
+        image: mainImageUrl,
       });
   
       onClose();
     } catch (error) {
-      console.error("Failed to insert murti:", error);
+      console.error("Error saving murti or images:", error);
       alert("Something went wrong while saving.");
     }
   };
@@ -134,7 +193,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
           </div>
 
           <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               <Ruler className="h-4 w-4 inline mr-2" />
               Size *
             </label>
@@ -149,7 +208,9 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
                 Select Size
               </option>
               {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
-                <option value={`${value} inches`}> {value} inches</option>
+                <option key={value} value={`${value} inches`}>
+                  {value} inches
+                </option>
               ))}
             </select>
           </div>
@@ -174,25 +235,44 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <Upload className="h-4 w-4 inline mr-2" />
-              Bappa Image
+              Bappa Images
             </label>
             <input
               type="file"
               accept="image/*"
+              multiple
               onChange={handleImageChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
             />
-            {formData.image && (
+            
+            {formData.images.length > 0 && (
               <div className="mt-3">
-                <img
-                  src={formData.image}
-                  alt="Preview"
-                  className="w-full h-32 object-cover rounded-lg"
-                />
+                <p className="text-sm text-gray-600 mb-2">
+                  Selected Images ({formData.images.length}):
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {formData.images.map((img, index) => (
+                    <div key={`image-${index}`} className="relative">
+                      <img
+                        src={img}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+
             <p className="text-sm text-gray-500 mt-2">
-              If no image is uploaded, a default image will be used.
+              You can select multiple images. If no images are uploaded, a default image will be used.
             </p>
           </div>
 
