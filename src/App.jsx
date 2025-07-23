@@ -71,7 +71,7 @@ function App() {
 
   return (
     <div>
- {showAd && <Advertisement onClose={() => setShowAd(false)} />}
+ {/* {showAd && <Advertisement onClose={() => setShowAd(false)} />} */}
     <div className="min-h-screen bg-no-repeat bg-cover bg-center"
     style={{ backgroundImage: `url(${backgroundImg})` }}
     >

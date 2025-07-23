@@ -497,7 +497,6 @@
 // };
 
 // export default AdminPage;
-
 import React, { useEffect, useState } from 'react';
 import { Plus, List, Calendar, User, Phone, IndianRupee, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
@@ -683,6 +682,9 @@ const AdminPage = ({ onAddBappa }) => {
   const [updateBappa] = useMutation(UPDATE_BAPPA);
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [murtiImagesData, setMurtiImagesData] = useState({});
+  const [sizeFilter, setSizeFilter] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [filterStatus, setFilterStatus] = useState(""); // Renamed for clarity to avoid confusion with bappa.booking_status
 
   // Function to fetch images for a specific murti
   const fetchMurtiImages = async (murtiId) => {
@@ -783,6 +785,8 @@ const AdminPage = ({ onAddBappa }) => {
     phoneNumber: item.customer_phone,
     paid_amount: item.paid_amount,
     paid_amount_sc: item.paid_amount_sc,
+    suggestions: item.suggestions, // Make sure suggestions are passed
+    customer_email: item.customer_email, // Make sure email is passed
     images: murtiImagesData[item.id] || [] // Add images array
   }));
 
@@ -795,9 +799,29 @@ const AdminPage = ({ onAddBappa }) => {
       bookedAt: item.created_at || new Date().toISOString(),
     }));
 
-  const bookedBappas = bappas.filter(b => b.booked);
-  console.log("booked bappas : ", bappas)
-  const availableBappas = bappas.filter(b => !b.booked);
+  const applyFilters = (bappaList) => {
+    return bappaList
+      .filter((b) => {
+        if (!filterStatus) return true; // No status filter applied
+        if (filterStatus === "available") {
+          return b.booking_status !== "booked" && b.booking_status !== "pending";
+        }
+        return b.booking_status === filterStatus;
+      })
+      .filter((b) => !sizeFilter || b.size === sizeFilter)
+      .filter((b) =>
+        searchText.trim() === ""
+          ? true
+          : (b.name || "").toLowerCase().includes(searchText.toLowerCase()) ||
+            (b.fullName || "").toLowerCase().includes(searchText.toLowerCase()) ||
+            (b.size || "").toLowerCase().includes(searchText.toLowerCase())
+      );
+  };
+    
+  const bookedBappas = applyFilters(bappas.filter((b) => b.booking_status === "booked"));
+  const availableBappas = applyFilters(bappas.filter((b) => b.booking_status !== "booked" && b.booking_status !== "pending"));
+  const pendingBappas = applyFilters(bappas.filter((b) => b.booking_status === "pending")); // Added for clarity
+  const allFilteredBappas = applyFilters(bappas); // This is the array you need for "All Murti" section
 
   const handleApprove = async (id) => {
     try {
@@ -822,27 +846,16 @@ const AdminPage = ({ onAddBappa }) => {
     refetch()
   }, [showAddModal])
   
-  const [filterStatus, setFilterStatus] = useState("");
-
-  // Filtered Murtis
-  const filteredBappas = bappas.filter((b) => {
-    if (!filterStatus) return true;
-    return filterStatus === "available"
-      ? b.booking_status !== "booked" && b.booking_status !== "pending"
-      : b.booking_status === filterStatus;
-  });
-
   // Totals (for booked only)
-  const bookedOnly = bappas.filter(b => b.booking_status === "booked");
-
-  const totalFinal = bookedOnly.reduce((sum, b) => sum + Number(b.price || 0), 0);
-  const totalPaid = bookedOnly.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0);
+  const totalFinal = bookedBappas.reduce((sum, b) => sum + Number(b.price || 0), 0);
+  const totalPaid = bookedBappas.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0);
   const totalRemaining = totalFinal - totalPaid;
 
   return (
     <div className="container mx-auto px-4 py-8">
       
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+        
         <div>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-200 mb-2">Admin Dashboard</h2>
           <p className="text-gray-200">Manage your Ganpati Bappa collection and bookings</p>
@@ -863,7 +876,7 @@ const AdminPage = ({ onAddBappa }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Murti</p>
-              <p className="text-3xl font-bold text-blue-600">{bappas.length}</p>
+              <p className="text-3xl font-bold text-blue-600">{allFilteredBappas.length}</p> {/* Use allFilteredBappas */}
             </div>
             <List className="h-12 w-12 text-blue-500" />
           </div>
@@ -890,6 +903,43 @@ const AdminPage = ({ onAddBappa }) => {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-4 mb-6">
+        {/* Filter by Booking Status */}
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="">All</option>
+          <option value="available">Available</option>
+          <option value="pending">Pending</option>
+          <option value="booked">Booked</option>
+        </select>
+
+        {/* Filter by Size */}
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={sizeFilter}
+          onChange={(e) => setSizeFilter(e.target.value)}
+        >
+          <option value="">All Sizes</option>
+          {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
+            <option key={value} value={`${value} inches`}>
+              {value} inches
+            </option>
+          ))}
+        </select>
+
+        {/* Search Box */}
+        <input
+          type="text"
+          className="border px-3 py-2 rounded-md flex-grow"
+          placeholder="Search by Murti ID, Customer Name, or Size..."
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+        />
+      </div>
+
       {/* Booked Bappas */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center space-x-2">
@@ -898,7 +948,7 @@ const AdminPage = ({ onAddBappa }) => {
         </h3>
 
         {bookedBappas.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No bookings yet</p>
+          <p className="text-gray-500 text-center py-8">No bookings yet for the current filters.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {bookedBappas.map((bappa,index) => {
@@ -978,95 +1028,99 @@ const AdminPage = ({ onAddBappa }) => {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {bappas.map((bappa,index) => (
-            <div key={bappa.id} className={`relative border rounded-xl p-4 ${bappa.booked ? 'bg-green-50 border-green-200' : 'hover:shadow-md'} transition-all`}>
+          {allFilteredBappas.length === 0 ? (
+            <p className="text-gray-500 text-center py-8 col-span-full">No murti found matching the current filters.</p>
+          ) : (
+            allFilteredBappas.map((bappa,index) => ( 
+              <div key={bappa.id} className={`relative border rounded-xl p-4 ${bappa.booked ? 'bg-green-50 border-green-200' : 'hover:shadow-md'} transition-all`}>
 
-              {editingId === bappa.id ? (
+                {editingId === bappa.id ? (
+                  <button
+                    onClick={() => handleSaveClick(bappa.id)}
+                    className="absolute top-2 right-10 text-green-600 hover:text-green-800"
+                    title="Save"
+                  >
+                    💾
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleEditClick(bappa)}
+                    className="absolute top-2 right-10 text-blue-600 hover:text-blue-800"
+                    title="Edit"
+                  >
+                    ✏️
+                  </button>
+                )}
                 <button
-                  onClick={() => handleSaveClick(bappa.id)}
-                  className="absolute top-2 right-10 text-green-600 hover:text-green-800"
-                  title="Save"
+                  onClick={() => handleDelete(bappa.id)}
+                  className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                  title="Delete"
                 >
-                  💾
+                  <Trash2 className="w-5 h-5" />
                 </button>
-              ) : (
-                <button
-                  onClick={() => handleEditClick(bappa)}
-                  className="absolute top-2 right-10 text-blue-600 hover:text-blue-800"
-                  title="Edit"
-                >
-                  ✏️
-                </button>
-              )}
-              <button
-                onClick={() => handleDelete(bappa.id)}
-                className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                title="Delete"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
 
-              <div className="flex space-x-4">
-                <ImageSlider 
-                  images={bappa.images}
-                  defaultImage={bappa.image}
-                  altText={bappa.name}
-                  className="w-16 h-16 flex-shrink-0"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="flex space-x-4">
+                  <ImageSlider 
+                    images={bappa.images}
+                    defaultImage={bappa.image}
+                    altText={bappa.name}
+                    className="w-16 h-16 flex-shrink-0"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      {editingId === bappa.id ? (
+                        <input
+                          type="text"
+                          className="border px-2 py-1 rounded w-full text-sm mr-2"
+                          value={editedValues.murti_id}
+                          onChange={(e) => handleInputChange('murti_id', e.target.value)}
+                          placeholder="Murti ID"
+                        />
+                      ) : (
+                        <h4 className="font-bold text-gray-800">{bappa.name}</h4>
+                      )}
+                      <span className={`absolute bottom-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow ${bappa.booked
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-blue-100 text-blue-700'
+                        }`}>
+                        {bappa.booking_status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">ID: #{index+1}</p>
+                    <p className="text-sm text-gray-600">{bappa.size}</p>
                     {editingId === bappa.id ? (
                       <input
-                        type="text"
-                        className="border px-2 py-1 rounded w-full text-sm mr-2"
-                        value={editedValues.murti_id}
-                        onChange={(e) => handleInputChange('murti_id', e.target.value)}
-                        placeholder="Murti ID"
+                        type="number"
+                        className="border px-2 py-1 rounded w-full text-sm mt-1"
+                        value={editedValues.final_price}
+                        onChange={(e) => handleInputChange('final_price', e.target.value)}
+                        placeholder="Final Price"
                       />
                     ) : (
-                      <h4 className="font-bold text-gray-800">{bappa.name}</h4>
+                      <p className="font-bold text-green-600">₹{bappa.price}</p>
                     )}
-                    <span className={`absolute bottom-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow ${bappa.booked
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-blue-100 text-blue-700'
-                      }`}>
-                      {bappa.booking_status}
-                    </span>
+                    {bappa.booking_status === "pending" && <>
+                      <div className="flex items-center space-x-2">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span>{bappa.fullName}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span>{bappa.phoneNumber}</span>
+                      </div>
+                      <button
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                        onClick={() => handleApprove(bappa.id)}
+                      >
+                        Approve
+                      </button>
+                    </>
+                    }
                   </div>
-                  <p className="text-sm text-gray-600">ID: #{index+1}</p>
-                  <p className="text-sm text-gray-600">{bappa.size}</p>
-                  {editingId === bappa.id ? (
-                    <input
-                      type="number"
-                      className="border px-2 py-1 rounded w-full text-sm mt-1"
-                      value={editedValues.final_price}
-                      onChange={(e) => handleInputChange('final_price', e.target.value)}
-                      placeholder="Final Price"
-                    />
-                  ) : (
-                    <p className="font-bold text-green-600">₹{bappa.price}</p>
-                  )}
-                  {bappa.booking_status === "pending" && <>
-                    <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4 text-gray-500" />
-                      <span>{bappa.fullName}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-4 w-4 text-gray-500" />
-                      <span>{bappa.phoneNumber}</span>
-                    </div>
-                    <button
-                      className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-                      onClick={() => handleApprove(bappa.id)}
-                    >
-                      Approve
-                    </button>
-                  </>
-                  }
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -1074,8 +1128,12 @@ const AdminPage = ({ onAddBappa }) => {
       <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
         <h3 className="text-2xl font-bold text-gray-800 mb-4">Murti Tally Summary</h3>
 
-        {/* Filters */}
-        <div className="flex gap-4 mb-4">
+        {/* Filters - Keep these filters in sync with the main ones if they are meant to control this section */}
+        {/* You already have the global filter states, so these separate selects here might be redundant
+            unless you intend for independent filtering for the tally. For consistency, removing these
+            and relying on the main filters is usually better. If you need separate filters for tally,
+            you'd need separate state variables for them. */}
+        {/* <div className="flex gap-4 mb-4">
           <select
             className="border px-3 py-2 rounded-md"
             value={filterStatus}
@@ -1086,7 +1144,7 @@ const AdminPage = ({ onAddBappa }) => {
             <option value="pending">Pending</option>
             <option value="booked">Booked</option>
           </select>
-        </div>
+        </div> */}
 
         {/* Tally Table */}
         <div className="overflow-x-auto">
@@ -1102,25 +1160,31 @@ const AdminPage = ({ onAddBappa }) => {
               </tr>
             </thead>
             <tbody>
-              {filteredBappas.map((bappa, idx) => (
-                <tr key={bappa.id} className="border-t">
-                  <td className="p-3">{idx + 1}</td>
-                  <td className="p-3">{bappa.name}</td>
-                  <td className="p-3 capitalize">{bappa.booking_status}</td>
-                  <td className="p-3">₹{bappa.price || 0}</td>
-                  <td className="p-3">₹{bappa.paid_amount || 0}</td>
-                  <td className="p-3">₹{(bappa.price || 0) - (bappa.paid_amount || 0)}</td>
+              {allFilteredBappas.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="p-3 text-center text-gray-500">No data available for the current filters.</td>
                 </tr>
-              ))}
+              ) : (
+                allFilteredBappas.map((bappa, idx) => ( 
+                  <tr key={bappa.id} className="border-t">
+                    <td className="p-3">{idx + 1}</td>
+                    <td className="p-3">{bappa.name}</td>
+                    <td className="p-3 capitalize">{bappa.booking_status}</td>
+                    <td className="p-3">₹{bappa.price || 0}</td>
+                    <td className="p-3">₹{bappa.paid_amount || 0}</td>
+                    <td className="p-3">₹{(bappa.price || 0) - (bappa.paid_amount || 0)}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Totals */}
         <div className="mt-4 text-right space-y-1 font-semibold">
-          <p>Total Final Price: ₹{totalFinal}</p>
-          <p>Total Paid: ₹{totalPaid}</p>
-          <p>Total Remaining: ₹{totalRemaining}</p>
+          <p>Total Final Price (Booked): ₹{totalFinal}</p> {/* Clarified this total is for booked */}
+          <p>Total Paid (Booked): ₹{totalPaid}</p> {/* Clarified this total is for booked */}
+          <p>Total Remaining (Booked): ₹{totalRemaining}</p> {/* Clarified this total is for booked */}
         </div>
       </div>
 

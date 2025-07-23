@@ -1,18 +1,27 @@
-import React from 'react';
-import { Phone, Mail, MapPin, Clock, Facebook, Instagram, Twitter, Send } from 'lucide-react';
+import React from "react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  Facebook,
+  Instagram,
+  Twitter,
+  Send,
+} from "lucide-react";
 
 const Contact = () => {
   return (
     <div className="bg-gradient-to-br from-orange-900 via-orange-800 to-red-900 py-16 px-4">
       <div className="container mx-auto max-w-6xl">
-        <div className="text-center mb-12">
+        {/* <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             संपर्क साधा
           </h2>
           <p className="text-xl text-orange-100 max-w-2xl mx-auto">
             आपल्या प्रश्नांसाठी किंवा विशेष मागण्यांसाठी आमच्याशी संपर्क साधा
           </p>
-        </div>
+        </div> */}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Information */}
@@ -22,7 +31,7 @@ const Contact = () => {
                 <Phone className="w-6 h-6 mr-3 text-orange-300" />
                 संपर्क माहिती
               </h3>
-              
+
               <div className="space-y-6">
                 <div className="flex items-center group hover:bg-white/5 p-3 rounded-xl transition-all duration-300">
                   <div className="bg-orange-500 p-3 rounded-xl mr-4 group-hover:bg-orange-400 transition-colors">
@@ -30,7 +39,9 @@ const Contact = () => {
                   </div>
                   <div>
                     <p className="text-orange-200 text-sm">फोन</p>
-                    <p className="text-white font-semibold">+91 9420 342516 (सर्वेश जोशी) </p>
+                    <p className="text-white font-semibold">
+                      +91 9420 342516 (सर्वेश जोशी){" "}
+                    </p>
                   </div>
                 </div>
 
@@ -40,19 +51,30 @@ const Contact = () => {
                   </div>
                   <div>
                     <p className="text-orange-200 text-sm">ईमेल</p>
-                    <p className="text-white font-semibold">vidyeshganeshmurti@gmail.com</p>
+                    <p className="text-white font-semibold">
+                      vidyeshganeshmurti@gmail.com
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center group hover:bg-white/5 p-3 rounded-xl transition-all duration-300">
-                  <div className="bg-orange-500 p-3 rounded-xl mr-4 group-hover:bg-orange-400 transition-colors">
-                    <MapPin className="w-5 h-5 text-white" />
+                <a
+                  href="https://maps.app.goo.gl/iEYvE3ZBU1LvKY4r9"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <div className="flex items-center group hover:bg-white/5 p-3 rounded-xl transition-all duration-300">
+                    <div className="bg-orange-500 p-3 rounded-xl mr-4 group-hover:bg-orange-400 transition-colors">
+                      <MapPin className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-orange-200 text-sm">पत्ता</p>
+                      <p className="text-white font-semibold">
+                        14, Vidyesh, State Bank Colony, Abhaynagar, Sangli.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-orange-200 text-sm">पत्ता</p>
-                    <p className="text-white font-semibold">14, Vidyesh, State Bank Colony, Abhaynagar, Sangli.</p>
-                  </div>
-                </div>
+                </a>
 
                 <div className="flex items-center group hover:bg-white/5 p-3 rounded-xl transition-all duration-300">
                   <div className="bg-orange-500 p-3 rounded-xl mr-4 group-hover:bg-orange-400 transition-colors">
@@ -60,7 +82,9 @@ const Contact = () => {
                   </div>
                   <div>
                     <p className="text-orange-200 text-sm">वेळ</p>
-                    <p className="text-white font-semibold">सकाळ 8:00 - संध्याकाळ 8:00</p>
+                    <p className="text-white font-semibold">
+                      सकाळ 8:00 - संध्याकाळ 8:00
+                    </p>
                   </div>
                 </div>
               </div>
@@ -100,7 +124,7 @@ const Contact = () => {
               <Send className="w-6 h-6 mr-3 text-orange-300" />
               संदेश पाठवा
             </h3>
-            
+
             <form className="space-y-6">
               <div>
                 <label className="block text-orange-200 text-sm font-medium mb-2">
@@ -163,7 +187,7 @@ const Contact = () => {
             गणपती बाप्पा मोरया! मंगलमूर्ती मोरया!
           </p>
           <p className="text-orange-300/60 text-sm mt-2">
-            © 2025 Murti Kendra. सर्व हक्क राखीव.
+            © Vidyesh Ganeshmurti 2025, All rights reserved.
           </p>
         </div>
       </div>

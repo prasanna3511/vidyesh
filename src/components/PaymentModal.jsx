@@ -383,7 +383,8 @@ import qrImage from '../assets/qr.jpeg';
 import { gql, useMutation } from '@apollo/client';
 import { saveAs } from 'file-saver';
 import { useAuthenticated } from '@nhost/react';
-
+// const { storage } = await import('@nhost/nhost');
+import  nhost from '../nhost';
 
 const UPDATE_MURTI_HISTORY = gql`
   mutation UpdateMurtiHistory(
@@ -533,6 +534,28 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
 
   const handleBookingComplete = async () => {
     const receiptId = generateReceiptId();
+    let uploadedScreenshotUrl = "";
+
+    // Upload screenshot if available and user is not authenticated
+    if (formData.paymentScreenshot && !isAuthenticated) {
+      const file = formData.paymentScreenshot;
+
+      // // Get access to storage client
+
+      // const nhost = storage.getNhostClient();
+
+      const { fileMetadata, error } = await nhost.storage.upload({
+        file,
+        bucketId: 'default', // or use a custom bucket name if defined
+        name: `screenshots/${Date.now()}_${file.name}`
+      });
+
+      if (error) {
+        throw new Error("Screenshot upload failed.");
+      }
+
+      uploadedScreenshotUrl = fileMetadata?.id || ''; // or fileMetadata.url if available
+    }
     try {
       await updateMurtiHistory({
         variables: {
@@ -543,7 +566,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
           customer_name: formData.fullName,
           customer_phone: parseFloat(formData.phoneNumber),
           paid_amount: parseFloat(formData.amount),
-          paid_amount_sc: isAuthenticated ?"" :(formData.paymentScreenshot?.name || ''),
+          paid_amount_sc: isAuthenticated ?"" :(uploadedScreenshotUrl || ''),
           suggestions: formData.suggestions.join(', ')
         }
       });
@@ -594,6 +617,8 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
           {step === 'qr' && (
             <div className="text-center space-y-6">
               <div className="bg-gray-100 rounded-xl p-8 mx-auto inline-block">
+              <p className="text-sm text-gray-900 mt-2 mb-2">Please take screenshot after payment</p>
+
                 <img src={qrImage} alt="QR Code" className="w-40 h-40 object-cover mx-auto" />
                 <p className="text-sm text-gray-500 mt-2">Scan to pay</p>
               {/* <button onClick={() => setStep('form')} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold"> */}
@@ -618,7 +643,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
               </div>
               {/* <p className="text-gray-600">Scan the QR code to make payment or Pay Via</p> */}
               <button onClick={() => setStep('form')} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold">
-                Have you Completed with Payment ?
+              Click here if Payment is done ?
               </button>
             </div>
           )}
@@ -700,7 +725,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
   onClick={handleDownloadImage}
   className="mt-2 text-sm text-blue-600 underline hover:text-blue-800"
 >
-  Download Image
+View image of your murti
 </button>
 
     <button
