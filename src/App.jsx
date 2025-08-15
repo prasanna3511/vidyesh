@@ -14,35 +14,35 @@ function App() {
   const [showAd, setShowAd] = useState(true);
 
   // Initialize with some default Bappas
-  useEffect(() => {
-    const defaultBappas = [
-      {
-        id: 1,
-        name: "Vakratunda Maharaj",
-        size: "Medium (12 inches)",
-        price: 2500,
-        image: "https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500",
-        booked: false
-      },
-      {
-        id: 2,
-        name: "Lambodara Swami",
-        size: "Large (18 inches)",
-        price: 4500,
-        image: "https://images.pexels.com/photos/7249432/pexels-photo-7249432.jpeg?auto=compress&cs=tinysrgb&w=500",
-        booked: false
-      },
-      {
-        id: 3,
-        name: "Gajanana Maharaj",
-        size: "Small (8 inches)",
-        price: 1500,
-        image: "https://images.pexels.com/photos/12498417/pexels-photo-12498417.jpeg?auto=compress&cs=tinysrgb&w=500",
-        booked: false
-      }
-    ];
-    setBappas(defaultBappas);
-  }, []);
+  // useEffect(() => {
+  //   const defaultBappas = [
+  //     {
+  //       id: 1,
+  //       name: "Vakratunda Maharaj",
+  //       size: "Medium (12 inches)",
+  //       price: 2500,
+  //       image: "https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500",
+  //       booked: false
+  //     },
+  //     {
+  //       id: 2,
+  //       name: "Lambodara Swami",
+  //       size: "Large (18 inches)",
+  //       price: 4500,
+  //       image: "https://images.pexels.com/photos/7249432/pexels-photo-7249432.jpeg?auto=compress&cs=tinysrgb&w=500",
+  //       booked: false
+  //     },
+  //     {
+  //       id: 3,
+  //       name: "Gajanana Maharaj",
+  //       size: "Small (8 inches)",
+  //       price: 1500,
+  //       image: "https://images.pexels.com/photos/12498417/pexels-photo-12498417.jpeg?auto=compress&cs=tinysrgb&w=500",
+  //       booked: false
+  //     }
+  //   ];
+  //   setBappas(defaultBappas);
+  // }, []);
 
   const addBappa = (newBappa) => {
     const bappa = {

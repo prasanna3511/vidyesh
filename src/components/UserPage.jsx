@@ -132,11 +132,11 @@ const filteredBappas = bappas
   {/* Search Bar */}
   <div className="w-64">
     <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
-      Search Murtis
+      Search Murti
     </label>
     <input
       type="text"
-      placeholder="Search by name, email, size..."
+      placeholder="Search by murti number,size....."
       value={searchText}
       onChange={(e) => setSearchText(e.target.value)}
       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"

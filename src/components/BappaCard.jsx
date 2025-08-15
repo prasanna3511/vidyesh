@@ -261,6 +261,7 @@ import { useAuthenticated } from '@nhost/react';
 import { gql } from '@apollo/client';
 import nhost from '../nhost';
 import ImagePreviewModal from './ImagePreviewModal'; // Import the new modal component
+import dedaultimage from '../assets/weblogo.png'
 
 // GraphQL Query to get Murti images
 const GET_MURTI_IMAGES = gql`
@@ -284,7 +285,7 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
       setIsLoading(true);
       
       if (!images || images.length === 0) {
-        setImageUrls([defaultImage]);
+        setImageUrls([dedaultimage]);
         setIsLoading(false);
         return;
       }
@@ -301,14 +302,14 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
         }
       } catch (error) {
         console.error('Error loading images for slider:', error);
-        setImageUrls([defaultImage]);
+        setImageUrls([dedaultimage]);
       }
       
       setIsLoading(false);
     };
 
     loadImages();
-  }, [images, defaultImage]);
+  }, [images, dedaultimage]);
 
   const nextImage = (e) => {
     e.stopPropagation();
@@ -335,11 +336,11 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
   return (
     <div className={`relative ${className} group`}>
       <img
-        src={imageUrls[currentImageIndex] || defaultImage}
+        src={imageUrls[currentImageIndex] || dedaultimage}
         alt={altText}
         className="w-full h-full rounded-lg object-contain"
         onError={(e) => {
-          e.target.src = defaultImage;
+          e.target.src = dedaultimage;
         }}
       />
       
@@ -347,7 +348,7 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
         <>
           <button
             onClick={prevImage}
-            className="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-opacity-70"
+            className="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1  transition-opacity duration-200 hover:bg-opacity-70"
             title="Previous image"
           >
             <ChevronLeft className="w-3 h-3" />
@@ -355,13 +356,13 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
           
           <button
             onClick={nextImage}
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-opacity-70"
+            className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1  transition-opacity duration-200 hover:bg-opacity-70"
             title="Next image"
           >
             <ChevronRight className="w-3 h-3" />
           </button>
           
-          <div className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded transition-opacity duration-200">
             {currentImageIndex + 1}/{imageUrls.length}
           </div>
         </>
@@ -427,7 +428,7 @@ const BappaCard = ({ bappa, onBuyNow }) => {
       </div>
       
       <div className="p-6">
-        <h3 className="text-2xl font-bold text-gray-800 mb-3">{bappa.murti_id}</h3>
+        <h3 className="text-2xl font-bold text-gray-800 mb-3">Murti No : {bappa.murti_id}</h3>
         
         <div className="space-y-3 mb-6">
           <div className="flex items-center space-x-3 text-gray-600">

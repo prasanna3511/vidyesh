@@ -96,30 +96,30 @@ const Contact = () => {
                 सोशल मीडिया
               </h3>
               <div className="flex space-x-4">
-                <a
+                {/* <a
                   href="#"
                   className="bg-blue-600 hover:bg-blue-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110"
                 >
                   <Facebook className="w-5 h-5 text-white" />
-                </a>
+                </a> */}
                 <a
                   href="https://www.instagram.com/joshi_business_tales?igsh=MW0xMnQyb3d1bXhpeg=="
                   className="bg-pink-600 hover:bg-pink-700 p-3 rounded-xl transition-all duration-300 transform hover:scale-110"
                 >
                   <Instagram className="w-5 h-5 text-white" />
                 </a>
-                <a
+                {/* <a
                   href="#"
                   className="bg-blue-400 hover:bg-blue-500 p-3 rounded-xl transition-all duration-300 transform hover:scale-110"
                 >
                   <Twitter className="w-5 h-5 text-white" />
-                </a>
+                </a> */}
               </div>
             </div>
           </div>
 
           {/* Contact Form */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-orange-300/20">
+          {/* <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-orange-300/20">
             <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
               <Send className="w-6 h-6 mr-3 text-orange-300" />
               संदेश पाठवा
@@ -178,7 +178,7 @@ const Contact = () => {
                 <span>संदेश पाठवा</span>
               </button>
             </form>
-          </div>
+          </div> */}
         </div>
 
         {/* Footer */}
