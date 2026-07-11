@@ -4,6 +4,7 @@ import PaymentModal from "./PaymentModal";
 import { gql, useQuery } from "@apollo/client";
 import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
 import Contact from "./contact";
+import { useAuthenticated } from "@nhost/react";
 
 const GET_MURTI_HISTORY = gql`
   query MyQuery {
@@ -27,6 +28,7 @@ const GET_MURTI_HISTORY = gql`
 `;
 
 const UserPage = ({ onBookBappa }) => {
+  const isAuthenticated = useAuthenticated();
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [sizeFilter, setSizeFilter] = useState("");
@@ -37,6 +39,7 @@ const UserPage = ({ onBookBappa }) => {
   const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
 
   const handleBuyNow = (bappa) => {
+    if (!isAuthenticated) return;
     setSelectedBappa(bappa);
     setShowPaymentModal(true);
   };
@@ -168,7 +171,7 @@ const filteredBappas = bappas
             </div>
           )}
   
-          {showPaymentModal && (
+          {isAuthenticated && showPaymentModal && (
             <PaymentModal
               bappa={selectedBappa}
               onClose={() => {

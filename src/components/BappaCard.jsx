@@ -375,7 +375,9 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
 const BappaCard = ({ bappa, onBuyNow }) => {
   const [murtiImages, setMurtiImages] = useState([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false); // New state for modal
+  const isAuthenticated = useAuthenticated();
   const defaultImage = 'https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500';
+  const isAvailable = bappa.booking_status !== 'booked' && bappa.booking_status !== 'pending';
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -443,24 +445,28 @@ const BappaCard = ({ bappa, onBuyNow }) => {
         </div>
        
 
-     <button
-          onClick={() => onBuyNow(bappa)}
-          disabled={(bappa.booking_status === 'booked' || bappa.booking_status === 'pending' )}
-          className={`w-full py-3 px-6 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
-            (bappa.booking_status === 'booked' || bappa.booking_status === 'pending' )
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-orange-500 via-red-500 to-purple-500 text-white hover:from-orange-600 hover:via-red-600 hover:to-purple-600 transform hover:scale-105 shadow-lg hover:shadow-xl'
-          }`}
-        >
-          
-          {(bappa.booking_status === 'booked' || bappa.booking_status === 'pending' ) ? (
-            <span>{bappa.booking_status}</span>
-          ) : (
-            <>
-              <span>Book Now</span>
-            </>
-          )}
-        </button>
+        {isAuthenticated ? (
+          <button
+            onClick={() => onBuyNow(bappa)}
+            disabled={!isAvailable}
+            className={`w-full py-3 px-6 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
+              !isAvailable
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-orange-500 via-red-500 to-purple-500 text-white hover:from-orange-600 hover:via-red-600 hover:to-purple-600 transform hover:scale-105 shadow-lg hover:shadow-xl'
+            }`}
+          >
+            <span>{isAvailable ? 'Book Now' : bappa.booking_status}</span>
+          </button>
+        ) : (
+          <div
+            className={`w-full py-3 px-6 rounded-xl font-bold text-lg text-center ${
+              isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+            }`}
+            role="status"
+          >
+            {isAvailable ? 'Available' : 'Not Available'}
+          </div>
+        )}
       </div>
 
       {showPreviewModal && (

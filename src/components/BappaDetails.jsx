@@ -10,18 +10,33 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
   console.log("oooooooo : ", bappa)
 
-  const toBase64 = (url) =>
-    fetch(url)
-      .then((res) => res.blob())
-      .then(
-        (blob) =>
-          new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          })
-      );
+  // Fetches an image and re-encodes it through a canvas so that (a) EXIF
+  // orientation is baked into the pixels instead of being ignored by jsPDF,
+  // which otherwise renders portrait phone photos sideways, and (b) the
+  // output is always a plain decodable JPEG, regardless of the source
+  // format (some stored screenshots fail to embed as-is and render blank).
+  const loadImage = async (url) => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+    } catch {
+      bitmap = await createImageBitmap(blob);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+
+    return {
+      dataUrl: canvas.toDataURL('image/jpeg', 0.95),
+      width: bitmap.width,
+      height: bitmap.height,
+    };
+  };
 
   if (!bappa) return null;
 
@@ -34,6 +49,14 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
     // Add fonts for better text rendering
     doc.setFont('helvetica');
+
+    // Ensures the next block fits on the current page; starts a new page otherwise
+    const ensureSpace = (requiredHeight) => {
+      if (y + requiredHeight > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+    };
 
     // Define professional color palette
     const colors = {
@@ -85,6 +108,36 @@ export default function BappaDetailsModal({ bappa, onClose }) {
         doc.setLineWidth(0.5);
         doc.roundedRect(x, y, width, height, 3, 3, 'S');
       }
+    };
+
+    // Draws a checkmark from vector strokes — the standard PDF font has no
+    // glyph for the ✓ character, so drawing text with it prints garbage.
+    const drawCheckmark = (cx, cy, size, color) => {
+      doc.setDrawColor(color.r, color.g, color.b);
+      doc.setLineWidth(size / 5);
+      doc.setLineCap('round');
+      doc.setLineJoin('round');
+      doc.lines(
+        [
+          [size * 0.35, size * 0.35],
+          [size * 0.65, -size * 0.75],
+        ],
+        cx - size * 0.5,
+        cy + size * 0.05
+      );
+      doc.setLineCap(0);
+      doc.setLineJoin(0);
+    };
+
+    // Draws a small circle with a bold monogram letter centered inside it
+    const drawIconBadge = (cx, cy, radius, letter, color) => {
+      doc.setFillColor(color.r, color.g, color.b);
+      doc.circle(cx, cy, radius, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(radius * 1.3);
+      doc.setFont('helvetica', 'bold');
+      const textWidth = doc.getTextWidth(letter);
+      doc.text(letter, cx - textWidth / 2, cy + radius * 0.45);
     };
 
     // Professional header with company branding
@@ -140,10 +193,16 @@ export default function BappaDetailsModal({ bappa, onClose }) {
     
     if (imageurl) {
       try {
-        const imgData = await toBase64(imageurl);
-        // Add image with proper format detection
-        const imageFormat = imageurl.toLowerCase().includes('.png') ? 'PNG' : 'JPEG';
-        doc.addImage(imgData, imageFormat, imgX + 4, imgY + 4, imgSize - 8, imgSize - 8);
+        const { dataUrl, width, height } = await loadImage(imageurl);
+        // Contain-fit within the box (preserving aspect ratio) instead of
+        // stretching into a square, which distorted portrait photos
+        const innerSize = imgSize - 8;
+        const scale = Math.min(innerSize / width, innerSize / height);
+        const drawW = width * scale;
+        const drawH = height * scale;
+        const drawX = imgX + 4 + (innerSize - drawW) / 2;
+        const drawY = imgY + 4 + (innerSize - drawH) / 2;
+        doc.addImage(dataUrl, 'JPEG', drawX, drawY, drawW, drawH);
       } catch (err) {
         console.error('Image loading failed:', err);
         // Better placeholder
@@ -193,11 +252,14 @@ export default function BappaDetailsModal({ bappa, onClose }) {
     y += bappaCardHeight + 20;
 
     // Price Breakdown Section
+    const priceCardHeight = bappa.discount_price !== null ? 80 : 60;
+    ensureSpace(30 + priceCardHeight);
+
     doc.setTextColor(colors.gray[900].r, colors.gray[900].g, colors.gray[900].b);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('PRICE BREAKDOWN', 15, y);
-    
+
     // Decorative line
     doc.setDrawColor(colors.primary.r, colors.primary.g, colors.primary.b);
     doc.setLineWidth(2);
@@ -205,7 +267,6 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
     y += 15;
 
-    const priceCardHeight = bappa.discount_price !== null ? 80 : 60;
     drawCard(15, y, pageWidth - 30, priceCardHeight, { r: 255, g: 255, b: 255 }, colors.gray[200]);
 
     let priceY = y + 15;
@@ -292,6 +353,8 @@ export default function BappaDetailsModal({ bappa, onClose }) {
     y += priceCardHeight + 25;
 
     // Customer Information Section
+    ensureSpace(40);
+
     doc.setTextColor(colors.gray[900].r, colors.gray[900].g, colors.gray[900].b);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -304,22 +367,22 @@ export default function BappaDetailsModal({ bappa, onClose }) {
     y += 15;
 
     const customerDetails = [
-      { 
-        label: "Full Name", 
-        value: String(bappa.fullName || ""), 
-        icon: "👤",
+      {
+        label: "Full Name",
+        value: String(bappa.fullName || ""),
+        icon: "N",
         color: colors.primary
       },
-      { 
-        label: "Phone Number", 
-        value: String(bappa.phoneNumber || ""), 
-        icon: "📞",
+      {
+        label: "Phone Number",
+        value: String(bappa.phoneNumber || ""),
+        icon: "P",
         color: colors.success
       },
-      { 
-        label: "Special Instructions", 
-        value: String(bappa?.suggestions || "None"), 
-        icon: "📝",
+      {
+        label: "Special Instructions",
+        value: String(bappa?.suggestions || "None"),
+        icon: "S",
         color: colors.warning,
         multiline: true
       }
@@ -328,13 +391,14 @@ export default function BappaDetailsModal({ bappa, onClose }) {
     customerDetails.forEach((detail, index) => {
       const isMultiline = detail.multiline && detail.value !== "None" && detail.value.length > 50;
       const cardHeight = isMultiline ? Math.max(35, Math.ceil(detail.value.length / 60) * 8 + 25) : 35;
-      
+
+      ensureSpace(cardHeight + 10);
+
       drawCard(15, y, pageWidth - 30, cardHeight, colors.gray[50], colors.gray[200]);
-      
+
       // Icon circle
-      doc.setFillColor(detail.color.r, detail.color.g, detail.color.b);
-      doc.circle(30, y + 17, 8, 'F');
-      
+      drawIconBadge(30, y + 17, 8, detail.icon, detail.color);
+
       // Label
       doc.setTextColor(colors.gray[600].r, colors.gray[600].g, colors.gray[600].b);
       doc.setFontSize(9);
@@ -363,7 +427,8 @@ export default function BappaDetailsModal({ bappa, onClose }) {
     // Payment Screenshot Section
     if (paymentSc) {
       y += 10;
-      
+      ensureSpace(65);
+
       doc.setTextColor(colors.gray[900].r, colors.gray[900].g, colors.gray[900].b);
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
@@ -377,15 +442,12 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
       // Payment status card
       drawCard(15, y, pageWidth - 30, 40, colors.gray[50], colors.success);
-      
+
       // Verified badge
       doc.setFillColor(colors.success.r, colors.success.g, colors.success.b);
       doc.circle(35, y + 20, 10, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('✓', 31, y + 24);
-      
+      drawCheckmark(35, y + 20, 10, { r: 255, g: 255, b: 255 });
+
       doc.setTextColor(colors.success.r, colors.success.g, colors.success.b);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -398,24 +460,25 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
       y += 50;
 
-      // Add new page for screenshot if needed
-      if (y > pageHeight - 120) {
-        doc.addPage();
-        y = 20;
-      }
-
       try {
-        const imgData = await toBase64(paymentSc);
-        const screenshotHeight = 80;
-        
-        drawCard(15, y, pageWidth - 30, screenshotHeight + 20, { r: 255, g: 255, b: 255 }, colors.gray[300]);
-        
-        // Determine image format
-        const imageFormat = paymentSc.toLowerCase().includes('.png') ? 'PNG' : 'JPEG';
-        doc.addImage(imgData, imageFormat, 20, y + 10, pageWidth - 40, screenshotHeight);
-        
-        y += screenshotHeight + 30;
-        
+        const { dataUrl, width, height } = await loadImage(paymentSc);
+
+        // Contain-fit the screenshot (phone screenshots are usually tall
+        // portrait images) instead of stretching it into a fixed wide box
+        const maxWidth = pageWidth - 50;
+        const maxHeight = 180;
+        const scale = Math.min(maxWidth / width, maxHeight / height);
+        const drawW = width * scale;
+        const drawH = height * scale;
+
+        ensureSpace(drawH + 40);
+
+        const cardWidth = pageWidth - 30;
+        drawCard(15, y, cardWidth, drawH + 20, { r: 255, g: 255, b: 255 }, colors.gray[300]);
+        doc.addImage(dataUrl, 'JPEG', 15 + (cardWidth - drawW) / 2, y + 10, drawW, drawH);
+
+        y += drawH + 30;
+
         // Payment caption
         doc.setTextColor(colors.gray[600].r, colors.gray[600].g, colors.gray[600].b);
         doc.setFontSize(11);
@@ -423,9 +486,10 @@ export default function BappaDetailsModal({ bappa, onClose }) {
         const captionText = `Payment screenshot - Amount: Rs ${String(bappa.paid_amount || 0)}`;
         const captionWidth = doc.getTextWidth(captionText);
         doc.text(captionText, (pageWidth - captionWidth) / 2, y);
-        
+
       } catch (err) {
         console.error('Payment screenshot loading failed:', err);
+        ensureSpace(20);
         doc.setTextColor(colors.error.r, colors.error.g, colors.error.b);
         doc.setFontSize(11);
         doc.text('Payment screenshot could not be loaded', 20, y);
@@ -434,8 +498,9 @@ export default function BappaDetailsModal({ bappa, onClose }) {
     }
 
     // Professional Footer
-    const footerY = Math.max(y + 30, pageHeight - 35);
-    
+    ensureSpace(45);
+    const footerY = pageHeight - 35;
+
     // Footer background
     doc.setFillColor(colors.gray[800].r, colors.gray[800].g, colors.gray[800].b);
     doc.rect(0, footerY - 10, pageWidth, 35, 'F');

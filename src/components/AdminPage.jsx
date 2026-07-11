@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Plus, List, Calendar, User, Phone, IndianRupee, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
 import { useAuthenticated } from '@nhost/react';
 import LoginModal from './LoginModal';
@@ -282,12 +282,16 @@ const AdminPage = ({ onAddBappa }) => {
   // };
   const handleSaveClick = async (id) => {
     try {
+      const discountPrice =
+        editedValues.discount_price === "" || editedValues.discount_price === null || editedValues.discount_price === undefined
+          ? null
+          : Number(editedValues.discount_price);
       await updateBappa({
         variables: {
           id,
           murti_id: editedValues.murti_id,
           final_price: editedValues.final_price,
-          discount_price: editedValues.discount_price // <--- Add this line
+          discount_price: discountPrice
         },
       });
       setEditingId(null);
@@ -342,6 +346,7 @@ const AdminPage = ({ onAddBappa }) => {
     paid_amount_sc: item.paid_amount_sc,
     suggestions: item.suggestions, // Make sure suggestions are passed
     customer_email: item.customer_email, // Make sure email is passed
+    booked_by: item.booked_by,
     images: murtiImagesData[item.id] || [], // Add images array
     discount_price:item.discount_price
   }));
@@ -405,6 +410,11 @@ const AdminPage = ({ onAddBappa }) => {
   const totalFinal = bookedBappas.reduce((sum, b) => sum + Number(b.price || 0), 0);
   const totalPaid = bookedBappas.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0);
   const totalRemaining = totalFinal - totalPaid;
+  const totalDiscounted = bookedBappas.reduce(
+    (sum, b) => sum + Number(b.discount_price || b.price || 0),
+    0
+  );
+  const totalRemainingDiscounted = totalDiscounted - totalPaid;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -650,6 +660,10 @@ const AdminPage = ({ onAddBappa }) => {
                             <Phone className="h-4 w-4 text-gray-500" />
                             <span>{booking.phoneNumber}</span>
                           </div>
+                          <div className="flex items-center space-x-2">
+                            <Mail className="h-4 w-4 text-gray-500" />
+                            <span className="break-all">Booked by: {bappa.booked_by || 'Not recorded'}</span>
+                          </div>
                           <p className="text-xs text-gray-500">
                             Booked: {new Date(booking.bookedAt).toLocaleDateString()}
                           </p>
@@ -773,23 +787,6 @@ const AdminPage = ({ onAddBappa }) => {
       <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
         <h3 className="text-2xl font-bold text-gray-800 mb-4">Murti Tally Summary</h3>
 
-        {/* Filters - Keep these filters in sync with the main ones if they are meant to control this section */}
-        {/* You already have the global filter states, so these separate selects here might be redundant
-            unless you intend for independent filtering for the tally. For consistency, removing these
-            and relying on the main filters is usually better. If you need separate filters for tally,
-            you'd need separate state variables for them. */}
-        {/* <div className="flex gap-4 mb-4">
-          <select
-            className="border px-3 py-2 rounded-md"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="available">Available</option>
-            <option value="pending">Pending</option>
-            <option value="booked">Booked</option>
-          </select>
-        </div> */}
 
         {/* Tally Table */}
         <div className="overflow-x-auto">
@@ -800,6 +797,7 @@ const AdminPage = ({ onAddBappa }) => {
                 <th className="p-3 text-left">Murti ID</th>
                 <th className="p-3 text-left">Status</th>
                 <th className="p-3 text-left">Final Price</th>
+                <th className="p-3 text-left">Discounted Price</th>
                 <th className="p-3 text-left">Paid Amount</th>
                 <th className="p-3 text-left">Remaining</th>
               </tr>
@@ -816,6 +814,7 @@ const AdminPage = ({ onAddBappa }) => {
                     <td className="p-3">{bappa.name}</td>
                     <td className="p-3 capitalize">{bappa.booking_status}</td>
                     <td className="p-3">₹{bappa.price || 0}</td>
+                    <td className="p-3">₹{bappa.discount_price || "-"}</td> 
                     <td className="p-3">₹{bappa.paid_amount || 0}</td>
                     <td className="p-3">₹{(bappa.price || 0) - (bappa.paid_amount || 0)}</td>
                   </tr>
@@ -826,11 +825,31 @@ const AdminPage = ({ onAddBappa }) => {
         </div>
 
         {/* Totals */}
-        <div className="mt-4 text-right space-y-1 font-semibold">
-          <p>Total Final Price (Booked): ₹{totalFinal}</p> {/* Clarified this total is for booked */}
-          <p>Total Paid (Booked): ₹{totalPaid}</p> {/* Clarified this total is for booked */}
-          <p>Total Remaining (Booked): ₹{totalRemaining}</p> {/* Clarified this total is for booked */}
-        </div>
+        {/* <div className="mt-4 text-right space-y-1 font-semibold">
+          <p>Total Final Price (Booked): ₹{totalFinal}</p> 
+          <p>Total Paid (Booked): ₹{totalPaid}</p> 
+          <p>Total Remaining (Booked): ₹{totalRemaining}</p> 
+        </div> */}
+       <div className="mt-4 text-right space-y-4 font-semibold">
+
+{/* Final Price Totals */}
+<div>
+  <h3 className="text-lg font-bold text-center mb-2">Final Price Totals</h3>
+  <p>Total Final Price (Booked): ₹{totalFinal}</p>
+  <p>Total Paid (Booked): ₹{totalPaid}</p>
+  <p>Total Remaining (Booked): ₹{totalRemaining}</p>
+</div>
+
+<hr className="my-4" />
+<div>
+  <h3 className="text-lg font-bold text-center mb-2">Discounted Price Totals</h3>
+  <p>Total Discounted Price (Booked): ₹{totalDiscounted}</p>
+  <p>Total Paid (Booked): ₹{totalPaid}</p>
+  <p>Total Remaining (Discounted Booked): ₹{totalRemainingDiscounted}</p>
+</div>
+
+</div>
+
       </div>
 
       {showAddModal && (

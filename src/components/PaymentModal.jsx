@@ -4,7 +4,7 @@ import jsPDF from 'jspdf';
 import qrImage from '../assets/qr.jpeg';
 import { gql, useMutation } from '@apollo/client';
 import { saveAs } from 'file-saver';
-import { useAuthenticated } from '@nhost/react';
+import { useAuthenticated, useUserEmail } from '@nhost/react';
 // const { storage } = await import('@nhost/nhost');
 import  nhost from '../nhost';
 // import pdf from '../../public/'
@@ -56,6 +56,7 @@ console.log("ohhhshhshshss : ",bappa)
     suggestionsEnabled: false
   });
   const isAuthenticated = useAuthenticated();
+  const authenticatedUserEmail = useUserEmail();
 
 
   const [updateMurtiHistory] = useMutation(UPDATE_MURTI_HISTORY);
@@ -161,6 +162,11 @@ console.log("ohhhshhshshss : ",bappa)
   };
 
   const handleBookingComplete = async () => {
+    if (!isAuthenticated || !authenticatedUserEmail) {
+      onClose();
+      return;
+    }
+
     const receiptId = generateReceiptId();
     let uploadedScreenshotUrl = "";
 
@@ -188,8 +194,8 @@ console.log("ohhhshhshshss : ",bappa)
       await updateMurtiHistory({
         variables: {
           _eq: parseInt(bappa.id),
-          booked_by: 'Customer',
-          booking_status: isAuthenticated? 'booked':'pending',
+          booked_by: authenticatedUserEmail,
+          booking_status: 'booked',
           customer_email: formData.email || '',
           customer_name: formData.fullName,
           customer_phone: parseFloat(formData.phoneNumber),
