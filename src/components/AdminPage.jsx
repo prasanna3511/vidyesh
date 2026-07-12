@@ -417,27 +417,29 @@ const AdminPage = ({ onAddBappa }) => {
       return;
     }
 
-    const message = `Namaskar ${bappa.fullName || 'Customer'}, your booking confirmation for Murti ${bappa.name} (${bappa.size}) is ready.`;
+    let pdfLink = '';
 
     try {
       const { fileName, blob } = await generateBookingPdf(bappa, { autoSave: false });
       const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
+      const { fileMetadata, error } = await nhost.storage.upload({
+        file: pdfFile,
+        bucketId: 'default',
+        name: `booking-pdfs/${Date.now()}_${fileName}`,
+      });
 
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({
-          title: fileName,
-          text: message,
-          files: [pdfFile],
-        });
-        return;
+      if (error) {
+        throw error;
       }
-
-      await generateBookingPdf(bappa);
+      pdfLink = nhost.storage.getPublicUrl({ fileId: fileMetadata.id });
     } catch (error) {
-      console.error('Failed to generate PDF:', error);
-      alert('Could not generate the booking PDF.');
-      return;
+      console.error('Failed to prepare PDF link:', error);
     }
+
+    const message = [
+      `Namaskar ${bappa.fullName || 'Customer'}, your booking confirmation for Murti ${bappa.name} (${bappa.size}) is ready.`,
+      pdfLink ? `PDF Link: ${pdfLink}` : 'PDF link could not be generated automatically.',
+    ].join('\n\n');
 
     window.open(
       `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`,
