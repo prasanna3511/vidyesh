@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import UserPage from './components/UserPage';
 import AdminPage from './components/AdminPage';
 import Header from './components/Header';
-import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
+import backgroundImg from "./assets/dagdusheth.jpg";
 import Contact from './components/contact';
 import Advertisement from './components/Advertisement';
 

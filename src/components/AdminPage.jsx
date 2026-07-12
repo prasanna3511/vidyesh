@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
 import { useAuthenticated } from '@nhost/react';
 import LoginModal from './LoginModal';
@@ -21,16 +21,17 @@ const DELETE_BAPPA = gql`
 `;
 
 const APPROVE_BAPPA = gql`
-mutation ApproveBappa($id: Int!, $booking_status: String!, $discount_price: numeric!) {
+mutation ApproveBappa($id: Int!, $booking_status: String!, $discount_price: numeric!, $date: date!) {
   update_murti_history(
     where: { id: { _eq: $id } }
-    _set: { booking_status: $booking_status, discount_price: $discount_price }
+    _set: { booking_status: $booking_status, discount_price: $discount_price, date: $date }
   ) {
     returning {
       id
       booking_status
       discount_price
       booked_by
+      date
     }
   }
 }
@@ -61,11 +62,13 @@ mutation UpdateBappa(
   $id: Int!,
   $murti_id: String!,
   $final_price: String!,
-  $discount_price: numeric
+  $discount_price: numeric,
+  $booking_status: String!,
+  $date: date!
 ) {
   update_murti_history(
     where: { id: { _eq: $id } },
-    _set: { murti_id: $murti_id, final_price: $final_price, discount_price: $discount_price }
+    _set: { murti_id: $murti_id, final_price: $final_price, discount_price: $discount_price, booking_status: $booking_status, date: $date }
   ) {
     affected_rows
   }
@@ -90,6 +93,7 @@ const GET_MURTI_HISTORY = gql`
       paid_amount_sc
       suggestions
       booked_by
+      date
     }
   }
 `;
@@ -103,6 +107,90 @@ const GET_MURTI_IMAGES = gql`
     }
   }
 `;
+
+const STATUS_OPTIONS = ['available', 'pending', 'booked', 'delivered'];
+
+const getCurrentDbDate = () => new Date().toISOString().split('T')[0];
+
+const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+      <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4">
+        <h3 className="text-lg font-bold text-white">Edit Murti</h3>
+        <button
+          onClick={onClose}
+          className="rounded-full p-2 text-white transition hover:bg-white/20"
+          title="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Murti ID</label>
+          <input
+            type="text"
+            className="w-full rounded-xl border px-4 py-3 text-gray-800"
+            value={values.murti_id}
+            onChange={(e) => onChange('murti_id', e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Final Price</label>
+          <input
+            type="text"
+            className="w-full rounded-xl border px-4 py-3 text-gray-800"
+            value={values.final_price}
+            onChange={(e) => onChange('final_price', e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Discount Price</label>
+          <input
+            type="text"
+            className="w-full rounded-xl border px-4 py-3 text-gray-800"
+            value={values.discount_price}
+            onChange={(e) => onChange('discount_price', e.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
+          <select
+            className="w-full rounded-xl border px-4 py-3 text-gray-800"
+            value={values.booking_status}
+            onChange={(e) => onChange('booking_status', e.target.value)}
+          >
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 border-t px-5 py-4">
+        <button
+          onClick={onClose}
+          className="rounded-xl border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onSave}
+          className="rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-4 py-2 font-bold text-white transition hover:from-green-600 hover:to-green-700"
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 // Image Slider Component
 const ImageSlider = ({ images, defaultImage, altText, className }) => {
@@ -255,12 +343,12 @@ const AdminPage = ({ onAddBappa }) => {
   }, [data]);
 
   const handleEditClick = (bappa) => {
-    console.log("editingId : ", bappa.id)
     setEditingId(bappa.id);
     setEditedValues({
       murti_id: bappa.name,
       final_price: bappa.price,
-      discount_price: bappa.discount_price || ""
+      discount_price: bappa.discount_price || "",
+      booking_status: bappa.booking_status || "available"
     });
   };
 
@@ -291,10 +379,13 @@ const AdminPage = ({ onAddBappa }) => {
           id,
           murti_id: editedValues.murti_id,
           final_price: editedValues.final_price,
-          discount_price: discountPrice
+          discount_price: discountPrice,
+          booking_status: editedValues.booking_status,
+          date: getCurrentDbDate()
         },
       });
       setEditingId(null);
+      setEditedValues({});
       await refetch(); // refresh the list
     } catch (err) {
       console.error("Error updating Bappa", err);
@@ -307,8 +398,17 @@ const AdminPage = ({ onAddBappa }) => {
     setEditedValues(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleCloseEditModal = () => {
+    setEditingId(null);
+    setEditedValues({});
+  };
+
   const isAuthenticated = useAuthenticated();
   const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated);
+
+  useEffect(() => {
+    refetch();
+  }, [showAddModal, refetch]);
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this Bappa?")) {
@@ -330,6 +430,18 @@ const AdminPage = ({ onAddBappa }) => {
     );
   }
 
+  if (loading) {
+    return <div className="px-4 py-8 text-center text-white">Loading admin data...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="px-4 py-8 text-center text-red-200">
+        Failed to load admin data: {error.message}
+      </div>
+    );
+  }
+
   const murtiData = data?.murti_history || [];
 
   const bappas = murtiData.map(item => ({
@@ -348,7 +460,8 @@ const AdminPage = ({ onAddBappa }) => {
     customer_email: item.customer_email, // Make sure email is passed
     booked_by: item.booked_by,
     images: murtiImagesData[item.id] || [], // Add images array
-    discount_price:item.discount_price
+    discount_price:item.discount_price,
+    date: item.date || null
   }));
 
   const bookings = murtiData
@@ -357,7 +470,7 @@ const AdminPage = ({ onAddBappa }) => {
       bappaId: item.id,
       fullName: item.customer_name,
       phoneNumber: item.customer_phone,
-      bookedAt: item.created_at || new Date().toISOString(),
+      bookedAt: item.date || null,
     }));
 
   const applyFilters = (bappaList) => {
@@ -388,7 +501,7 @@ const AdminPage = ({ onAddBappa }) => {
       await approveBappa({
         variables: {
           id,
-          booking_status: "booked",discount_price: parseInt(discountedAmount, 10),
+          booking_status: "booked",discount_price: parseInt(discountedAmount, 10), date: getCurrentDbDate(),
         }
       });
 
@@ -402,10 +515,6 @@ const AdminPage = ({ onAddBappa }) => {
   const getBookingDetails = (bappaId) =>
     bookings.find(booking => booking.bappaId === bappaId);
 
-  useEffect(() => {
-    refetch()
-  }, [showAddModal])
-  
   // Totals (for booked only)
   const totalFinal = bookedBappas.reduce((sum, b) => sum + Number(b.price || 0), 0);
   const totalPaid = bookedBappas.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0);
@@ -479,6 +588,7 @@ const AdminPage = ({ onAddBappa }) => {
           <option value="available">Available</option>
           <option value="pending">Pending</option>
           <option value="booked">Booked</option>
+          <option value="delivered">Delivered</option>
         </select>
 
         {/* Filter by Size */}
@@ -522,68 +632,29 @@ const AdminPage = ({ onAddBappa }) => {
                 
                 <div key={bappa.id}
                 onClick={() => setSelectedBappa(bappa)}
-                className=" relative border rounded-xl p-4 hover:shadow-md transition-shadow">
-                  {/* Edit / Save Buttons */}
-                  
-{/* {editingId === bappa.id ? (
-  <button
-    onClick={(e) => {
-      e.stopPropagation(); // prevent modal opening
-      handleSaveClick(bappa.id);
-    }}
-    className="absolute top-[-15px] right-[-7px] text-green-600 hover:text-green-800"
-    title="Save"
-  >
-    💾
-  </button>
-) : (
-  <button
-    onClick={(e) => {
-      e.stopPropagation(); // prevent modal opening
-      handleEditClick(bappa);
-    }}
-    className="absolute top-[-25px] right-[-5px] text-blue-600 hover:text-blue-800"
-    title="Edit"
-  >
-    ✏️
-  </button>
-)} */}
-<div className="absolute flex gap-2 top-[50px] right-[-5px]">
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      setRoundUpBappa(bappa); // Open round up
-    }}
-    className=" bg-gradient-to-r from-yellow-400 to-yellow-600 text-white p-2 shadow hover:from-yellow-500 hover:to-yellow-700 focus:outline-none"
-    title="Round Up"
-  >
-    {/* You can use an icon here, e.g., a star or circle */}
-    Round up
-  </button>
-  {editingId === bappa.id ? (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        handleSaveClick(bappa.id);
-      }}
-      className="text-green-600 hover:text-green-800"
-      title="Save"
-    >
-      💾
-    </button>
-  ) : (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        handleEditClick(bappa);
-      }}
-      className="text-blue-600 hover:text-blue-800"
-      title="Edit"
-    >
-      ✏️
-    </button>
-  )}
-</div>
+                className="relative border rounded-xl p-4 hover:shadow-md transition-shadow">
+                  <div className="mb-4 flex justify-end gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRoundUpBappa(bappa);
+                      }}
+                      className="rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:from-yellow-500 hover:to-yellow-700 focus:outline-none"
+                      title="Round Up"
+                    >
+                      Round up
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditClick(bappa);
+                      }}
+                      className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                      title="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </div>
 
 
                   <div className="flex space-x-4">
@@ -595,17 +666,7 @@ const AdminPage = ({ onAddBappa }) => {
                     />
                     <div className="flex-1">
                       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
-                        {editingId === bappa.id ? (
-                          <input
-                            type="text"
-                            className="border px-2 py-1 rounded text-sm"
-                            value={editedValues.murti_id}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => handleInputChange('murti_id', e.target.value)}
-                          />
-                        ) : (
-                          <h4 className="font-bold text-gray-800">{bappa.name}</h4>
-                        )}
+                        <h4 className="font-bold text-gray-800">{bappa.name}</h4>
                         <span  className={`px-2 py-1 rounded-full text-xs font-bold ${
     bappa.booking_status === 'booked'
       ? 'bg-green-100 text-green-700'
@@ -619,35 +680,10 @@ const AdminPage = ({ onAddBappa }) => {
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mb-2">ID: #{index+1} | {bappa.size}</p>
-                      {editingId === bappa.id ? (
-                        <input
-                          type="text"
-                          className="border px-2 py-1 rounded text-sm mb-1"
-                          value={editedValues.final_price}
-                          onChange={(e) => handleInputChange('final_price', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          placeholder="Final Price"
-                        />
-                      ) : (
-                        <p className="font-bold text-green-600">₹{bappa.price}</p>
-                      )}
-                      {editingId === bappa.id ? (
-  <>
-    <input
-      type="text"
-      className="border px-2 py-1 rounded  text-sm mb-1 mt-2"
-      value={editedValues.discount_price}
-      onChange={e => handleInputChange("discount_price", e.target.value)}
-      onClick={(e) => e.stopPropagation()}
-      placeholder="Discount Price"
-    />
-  </>
-) : (
-  <div>
-    <p className="text-sm text-blue-700">Discount Price: {bappa.discount_price ? "₹" + bappa.discount_price : "-"}</p>
-    {/* <p className="font-bold text-green-600">₹{bappa.price}</p> */}
-  </div>
-)}
+                      <p className="font-bold text-green-600">₹{bappa.price}</p>
+                      <div>
+                        <p className="text-sm text-blue-700">Discount Price: {bappa.discount_price ? "₹" + bappa.discount_price : "-"}</p>
+                      </div>
 
 
                       {booking && (
@@ -665,7 +701,7 @@ const AdminPage = ({ onAddBappa }) => {
                             <span className="break-all">Booked by: {bappa.booked_by || 'Not recorded'}</span>
                           </div>
                           <p className="text-xs text-gray-500">
-                            Booked: {new Date(booking.bookedAt).toLocaleDateString()}
+                            Booked: {booking.bookedAt ? new Date(booking.bookedAt).toLocaleDateString() : 'Not available'}
                           </p>
                         </div>
                       )}
@@ -692,23 +728,13 @@ const AdminPage = ({ onAddBappa }) => {
             allFilteredBappas.map((bappa,index) => ( 
               <div key={bappa.id} className={`relative border rounded-xl p-4 ${bappa.booked ? 'bg-green-50 border-green-200' : 'hover:shadow-md'} transition-all`}>
 
-                {editingId === bappa.id ? (
-                  <button
-                    onClick={() => handleSaveClick(bappa.id)}
-                    className="absolute top-2 right-10 text-green-600 hover:text-green-800"
-                    title="Save"
-                  >
-                    💾
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleEditClick(bappa)}
-                    className="absolute top-2 right-10 text-blue-600 hover:text-blue-800"
-                    title="Edit"
-                  >
-                    ✏️
-                  </button>
-                )}
+                <button
+                  onClick={() => handleEditClick(bappa)}
+                  className="absolute top-2 right-10 rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                  title="Edit"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
                 <button
                   onClick={() => handleDelete(bappa.id)}
                   className="absolute top-2 right-2 text-red-500 hover:text-red-700"
@@ -726,17 +752,7 @@ const AdminPage = ({ onAddBappa }) => {
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
-                      {editingId === bappa.id ? (
-                        <input
-                          type="text"
-                          className="border px-2 py-1 rounded w-full text-sm mr-2"
-                          value={editedValues.murti_id}
-                          onChange={(e) => handleInputChange('murti_id', e.target.value)}
-                          placeholder="Murti ID"
-                        />
-                      ) : (
-                        <h4 className="font-bold text-gray-800">{bappa.name}</h4>
-                      )}
+                      <h4 className="font-bold text-gray-800">{bappa.name}</h4>
                       <span className={`absolute bottom-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow ${bappa.booked
                         ? 'bg-green-100 text-green-700'
                         : 'bg-blue-100 text-blue-700'
@@ -746,17 +762,7 @@ const AdminPage = ({ onAddBappa }) => {
                     </div>
                     <p className="text-sm text-gray-600">ID: #{index+1}</p>
                     <p className="text-sm text-gray-600">{bappa.size}</p>
-                    {editingId === bappa.id ? (
-                      <input
-                        type="number"
-                        className="border px-2 py-1 rounded w-full text-sm mt-1"
-                        value={editedValues.final_price}
-                        onChange={(e) => handleInputChange('final_price', e.target.value)}
-                        placeholder="Final Price"
-                      />
-                    ) : (
-                      <p className="font-bold text-green-600">₹{bappa.price}</p>
-                    )}
+                    <p className="font-bold text-green-600">₹{bappa.price}</p>
                     {bappa.booking_status === "pending" && <>
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4 text-gray-500" />
@@ -863,6 +869,14 @@ const AdminPage = ({ onAddBappa }) => {
         <BappaDetailsModal
           bappa={selectedBappa}
           onClose={() => setSelectedBappa(null)}
+        />
+      )}
+      {editingId !== null && (
+        <EditMurtiModal
+          values={editedValues}
+          onChange={handleInputChange}
+          onClose={handleCloseEditModal}
+          onSave={() => handleSaveClick(editingId)}
         />
       )}
       {pendingApprovalBappa && (

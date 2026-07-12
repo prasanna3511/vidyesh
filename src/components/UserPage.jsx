@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import BappaCard from "./BappaCard";
 import PaymentModal from "./PaymentModal";
 import { gql, useQuery } from "@apollo/client";
-import backgroundImg from "/home/master7/Documents/programming/project/src/assets/dagdusheth.jpg";
+import backgroundImg from "../assets/dagdusheth.jpg";
 import Contact from "./contact";
 import { useAuthenticated } from "@nhost/react";
 
