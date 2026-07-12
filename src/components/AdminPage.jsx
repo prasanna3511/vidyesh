@@ -10,6 +10,7 @@ import BappaDetailsModal from '../components/BappaDetails';
 import nhost from '../nhost';
 import ApproveBappaModal from './ApproveBappaModal';
 import RoundUpModal from './RoundupModal'; // Adjust path if needed
+import { generateBookingPdf } from '../utils/bookingPdf';
 
 
 const DELETE_BAPPA = gql`
@@ -111,6 +112,12 @@ const GET_MURTI_IMAGES = gql`
 const STATUS_OPTIONS = ['available', 'pending', 'booked', 'delivered'];
 
 const getCurrentDbDate = () => new Date().toISOString().split('T')[0];
+const getWhatsAppNumber = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 10) return `91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return digits;
+  return digits;
+};
 
 const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -403,6 +410,42 @@ const AdminPage = ({ onAddBappa }) => {
     setEditedValues({});
   };
 
+  const handleSendMessage = async (bappa) => {
+    const whatsappNumber = getWhatsAppNumber(bappa.phoneNumber);
+    if (!whatsappNumber) {
+      alert('Phone number not available for this booking.');
+      return;
+    }
+
+    const message = `Namaskar ${bappa.fullName || 'Customer'}, your booking confirmation for Murti ${bappa.name} (${bappa.size}) is ready.`;
+
+    try {
+      const { fileName, blob } = await generateBookingPdf(bappa, { autoSave: false });
+      const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          title: fileName,
+          text: message,
+          files: [pdfFile],
+        });
+        return;
+      }
+
+      await generateBookingPdf(bappa);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      alert('Could not generate the booking PDF.');
+      return;
+    }
+
+    window.open(
+      `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
   const isAuthenticated = useAuthenticated();
   const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated);
 
@@ -643,6 +686,16 @@ const AdminPage = ({ onAddBappa }) => {
                       title="Round Up"
                     >
                       Round up
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendMessage(bappa);
+                      }}
+                      className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:from-green-600 hover:to-green-700 focus:outline-none"
+                      title="Send Message"
+                    >
+                      Send Message
                     </button>
                     <button
                       onClick={(e) => {
