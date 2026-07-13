@@ -409,6 +409,18 @@ const BappaCard = ({ bappa, onBuyNow }) => {
     setShowPreviewModal(false);
   };
 
+  const primaryImageUrl =
+    murtiImages.length > 0
+      ? nhost.storage.getPublicUrl({ fileId: murtiImages[0].image_id })
+      : bappa.image || dedaultimage;
+
+  const handleBuyNowClick = () => {
+    onBuyNow({
+      ...bappa,
+      image: primaryImageUrl,
+    });
+  };
+
   return (
     <div className="bg-white/90 rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
       <div className="relative shadow-lg rounded-t-2xl overflow-hidden">
@@ -447,7 +459,7 @@ const BappaCard = ({ bappa, onBuyNow }) => {
 
         {isAuthenticated ? (
           <button
-            onClick={() => onBuyNow(bappa)}
+            onClick={handleBuyNowClick}
             disabled={!isAvailable}
             className={`w-full py-3 px-6 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
               !isAvailable

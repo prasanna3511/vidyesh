@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react';
+import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight, Pencil, X, MessageSquareText } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
 import { useAuthenticated } from '@nhost/react';
 import LoginModal from './LoginModal';
@@ -109,6 +109,72 @@ const GET_MURTI_IMAGES = gql`
   }
 `;
 
+const GET_AD_MESSAGES_UPPER = gql`
+  query GetAdvertisementMessagesUpper {
+    advertisement_message(order_by: { id: desc }) {
+      id
+      message
+      title: Title
+    }
+  }
+`;
+
+const GET_AD_MESSAGES_LOWER = gql`
+  query GetAdvertisementMessagesLower {
+    advertisement_message(order_by: { id: desc }) {
+      id
+      message
+      title
+    }
+  }
+`;
+
+const INSERT_AD_MESSAGE_UPPER = gql`
+  mutation InsertAdvertisementMessageUpper($message: String!, $Title: String!) {
+    insert_advertisement_message_one(object: { message: $message, Title: $Title }) {
+      id
+      message
+      title: Title
+    }
+  }
+`;
+
+const INSERT_AD_MESSAGE_LOWER = gql`
+  mutation InsertAdvertisementMessageLower($message: String!, $title: String!) {
+    insert_advertisement_message_one(object: { message: $message, title: $title }) {
+      id
+      message
+      title
+    }
+  }
+`;
+
+const UPDATE_AD_MESSAGE_UPPER = gql`
+  mutation UpdateAdvertisementMessageUpper($id: Int!, $message: String!, $Title: String!) {
+    update_advertisement_message_by_pk(
+      pk_columns: { id: $id }
+      _set: { message: $message, Title: $Title }
+    ) {
+      id
+      message
+      title: Title
+    }
+  }
+`;
+
+const UPDATE_AD_MESSAGE_LOWER = gql`
+  mutation UpdateAdvertisementMessageLower($id: Int!, $message: String!, $title: String!) {
+    update_advertisement_message_by_pk(
+      pk_columns: { id: $id }
+      _set: { message: $message, title: $title }
+    ) {
+      id
+      message
+      title
+    }
+  }
+`;
+
 const STATUS_OPTIONS = ['available', 'pending', 'booked', 'delivered'];
 
 const getCurrentDbDate = () => new Date().toISOString().split('T')[0];
@@ -198,6 +264,127 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
     </div>
   </div>
 );
+
+const MessageManagerModal = ({
+  onClose,
+  onSubmit,
+  isSaving,
+  formValues,
+  onFormChange,
+  messages,
+  selectedMessageId,
+  onSelectMessage,
+  onCreateNew,
+}) => {
+  const [showPreviousMessages, setShowPreviousMessages] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-4">
+          <h3 className="text-lg font-bold text-white">Create Message</h3>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-white transition hover:bg-white/20"
+            title="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Title *</label>
+            <input
+              type="text"
+              value={formValues.title}
+              onChange={(e) => onFormChange('title', e.target.value)}
+              className="w-full rounded-xl border px-4 py-3 text-gray-800"
+              placeholder="Message title"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Message *</label>
+            <textarea
+              value={formValues.message}
+              onChange={(e) => onFormChange('message', e.target.value)}
+              rows={5}
+              className="w-full rounded-xl border px-4 py-3 text-gray-800"
+              placeholder="Enter the main message text"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onCreateNew}
+              className="rounded-xl border border-pink-300 px-4 py-2 text-sm font-medium text-pink-700 transition hover:bg-pink-50"
+            >
+              Create New
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPreviousMessages((prev) => !prev)}
+              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            >
+              {showPreviousMessages ? 'Hide Previous Messages' : 'Show Previous Messages'}
+            </button>
+            {messages.length > 0 && (
+              <p className="text-sm text-gray-500">
+                Default selected: {messages.find((item) => item.id === selectedMessageId)?.title || messages[0]?.title}
+              </p>
+            )}
+          </div>
+
+          {showPreviousMessages && (
+            <div className="max-h-72 space-y-3 overflow-y-auto rounded-2xl border bg-gray-50 p-4">
+              {messages.length === 0 ? (
+                <p className="text-sm text-gray-500">No previous messages yet.</p>
+              ) : (
+                messages.map((item, index) => {
+                  const isSelected = item.id === selectedMessageId;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onSelectMessage(item.id)}
+                      className={`w-full rounded-xl border p-4 text-left transition ${
+                        isSelected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300'
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center justify-between gap-3">
+                        <p className="font-semibold text-gray-800">{item.title || `Message ${item.id}`}</p>
+                        {index === 0 && <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">Latest</span>}
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-3">{item.message}</p>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 border-t px-5 py-4">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={isSaving}
+            className="rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-4 py-2 font-bold text-white transition hover:from-fuchsia-700 hover:to-pink-700 disabled:opacity-60"
+          >
+            {isSaving ? 'Saving...' : selectedMessageId ? 'Update Message' : 'Save Message'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Image Slider Component
 const ImageSlider = ({ images, defaultImage, altText, className }) => {
@@ -302,6 +489,7 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
 
 const AdminPage = ({ onAddBappa }) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
   const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
   const [approveBappa] = useMutation(APPROVE_BAPPA);
   const [deleteBappa] = useMutation(DELETE_BAPPA);
@@ -314,8 +502,35 @@ const AdminPage = ({ onAddBappa }) => {
   const [searchText, setSearchText] = useState("");
   const [pendingApprovalBappa, setPendingApprovalBappa] = useState(null);
   const [roundUpBappa, setRoundUpBappa] = useState(null);
+  const [advertisementMessages, setAdvertisementMessages] = useState([]);
+  const [messageFieldMode, setMessageFieldMode] = useState('upper');
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [messageFormValues, setMessageFormValues] = useState({ title: '', message: '' });
+  const [isSavingMessage, setIsSavingMessage] = useState(false);
   
   const [filterStatus, setFilterStatus] = useState(""); // Renamed for clarity to avoid confusion with bappa.booking_status
+
+  const loadAdvertisementMessages = async (useLatestAsDefault = false) => {
+    try {
+      const upperResult = await nhost.graphql.request(GET_AD_MESSAGES_UPPER);
+      const records = upperResult?.data?.advertisement_message || upperResult?.advertisement_message || [];
+      setMessageFieldMode('upper');
+      setAdvertisementMessages(records);
+      setSelectedMessageId((prev) => (useLatestAsDefault ? records[0]?.id ?? null : prev ?? records[0]?.id ?? null));
+      return;
+    } catch (upperError) {
+      try {
+        const lowerResult = await nhost.graphql.request(GET_AD_MESSAGES_LOWER);
+        const records = lowerResult?.data?.advertisement_message || lowerResult?.advertisement_message || [];
+        setMessageFieldMode('lower');
+        setAdvertisementMessages(records);
+        setSelectedMessageId((prev) => (useLatestAsDefault ? records[0]?.id ?? null : prev ?? records[0]?.id ?? null));
+      } catch (lowerError) {
+        console.error('Failed to load advertisement messages:', lowerError);
+        setAdvertisementMessages([]);
+      }
+    }
+  };
 
   // Function to fetch images for a specific murti
   const fetchMurtiImages = async (murtiId) => {
@@ -348,6 +563,24 @@ const AdminPage = ({ onAddBappa }) => {
 
     loadAllImages();
   }, [data]);
+
+  useEffect(() => {
+    loadAdvertisementMessages(true);
+  }, []);
+
+  useEffect(() => {
+    if (!showMessageModal) return;
+
+    const selected = advertisementMessages.find((item) => item.id === selectedMessageId);
+    if (selected) {
+      setMessageFormValues({
+        title: selected.title || '',
+        message: selected.message || '',
+      });
+    } else if (advertisementMessages.length === 0) {
+      setMessageFormValues({ title: '', message: '' });
+    }
+  }, [showMessageModal, selectedMessageId, advertisementMessages]);
 
   const handleEditClick = (bappa) => {
     setEditingId(bappa.id);
@@ -410,6 +643,53 @@ const AdminPage = ({ onAddBappa }) => {
     setEditedValues({});
   };
 
+  const handleMessageFormChange = (field, value) => {
+    setMessageFormValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateNewMessage = () => {
+    setSelectedMessageId(null);
+    setMessageFormValues({ title: '', message: '' });
+  };
+
+  const handleSaveMessageTemplate = async () => {
+    if (!messageFormValues.title.trim() || !messageFormValues.message.trim()) {
+      alert('Please fill in both title and message.');
+      return;
+    }
+
+    setIsSavingMessage(true);
+    try {
+      const isEditingExisting = selectedMessageId !== null;
+      const mutation = isEditingExisting
+        ? messageFieldMode === 'upper'
+          ? UPDATE_AD_MESSAGE_UPPER
+          : UPDATE_AD_MESSAGE_LOWER
+        : messageFieldMode === 'upper'
+          ? INSERT_AD_MESSAGE_UPPER
+          : INSERT_AD_MESSAGE_LOWER;
+
+      const variables = isEditingExisting
+        ? messageFieldMode === 'upper'
+          ? { id: selectedMessageId, message: messageFormValues.message.trim(), Title: messageFormValues.title.trim() }
+          : { id: selectedMessageId, message: messageFormValues.message.trim(), title: messageFormValues.title.trim() }
+        : messageFieldMode === 'upper'
+          ? { message: messageFormValues.message.trim(), Title: messageFormValues.title.trim() }
+          : { message: messageFormValues.message.trim(), title: messageFormValues.title.trim() };
+
+      await nhost.graphql.request(mutation, variables);
+      await loadAdvertisementMessages(true);
+      if (!isEditingExisting) {
+        setMessageFormValues({ title: '', message: '' });
+      }
+    } catch (error) {
+      console.error('Failed to save advertisement message:', error);
+      alert('Could not save the message.');
+    } finally {
+      setIsSavingMessage(false);
+    }
+  };
+
   const handleSendMessage = async (bappa) => {
     const whatsappNumber = getWhatsAppNumber(bappa.phoneNumber);
     if (!whatsappNumber) {
@@ -417,10 +697,20 @@ const AdminPage = ({ onAddBappa }) => {
       return;
     }
 
+    const selectedTemplate =
+      advertisementMessages.find((item) => item.id === selectedMessageId) || advertisementMessages[0] || null;
+    const pdfBappa = {
+      ...bappa,
+      imageUrl:
+        bappa.images?.length > 0
+          ? nhost.storage.getPublicUrl({ fileId: bappa.images[0].image_id })
+          : bappa.image,
+    };
+
     let pdfLink = '';
 
     try {
-      const { fileName, blob } = await generateBookingPdf(bappa, { autoSave: false });
+      const { fileName, blob } = await generateBookingPdf(pdfBappa, { autoSave: false });
       const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
       const { fileMetadata, error } = await nhost.storage.upload({
         file: pdfFile,
@@ -437,9 +727,20 @@ const AdminPage = ({ onAddBappa }) => {
     }
 
     const message = [
-      `Namaskar ${bappa.fullName || 'Customer'}, your booking confirmation for Murti ${bappa.name} (${bappa.size}) is ready.`,
+      selectedTemplate?.title ? `*${selectedTemplate.title}*` : null,
+      selectedTemplate?.message || null,
+      [
+        'Customer Details',
+        `Name: ${bappa.fullName || '-'}`,
+        `Phone: ${bappa.phoneNumber || '-'}`,
+        `Murti: ${bappa.name || '-'}`,
+        `Size: ${bappa.size || '-'}`,
+        `Status: ${bappa.booking_status || '-'}`,
+      ].join('\n'),
       pdfLink ? `PDF Link: ${pdfLink}` : 'PDF link could not be generated automatically.',
-    ].join('\n\n');
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
     window.open(
       `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`,
@@ -450,6 +751,10 @@ const AdminPage = ({ onAddBappa }) => {
 
   const isAuthenticated = useAuthenticated();
   const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated);
+
+  useEffect(() => {
+    setShowLoginModal(!isAuthenticated);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     refetch();
@@ -580,13 +885,22 @@ const AdminPage = ({ onAddBappa }) => {
           <p className="text-gray-200">Manage your Ganpati Bappa collection and bookings</p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="mt-4 md:mt-0 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-300 flex items-center space-x-2 shadow-lg"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Add New Murti</span>
-        </button>
+        <div className="mt-4 flex flex-wrap gap-3 md:mt-0">
+          <button
+            onClick={() => setShowMessageModal(true)}
+            className="bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold hover:from-fuchsia-700 hover:to-pink-700 transition-all duration-300 flex items-center space-x-2 shadow-lg"
+          >
+            <MessageSquareText className="h-5 w-5" />
+            <span>Create Message</span>
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-300 flex items-center space-x-2 shadow-lg"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add New Murti</span>
+          </button>
+        </div>
       </div>
 
       {/* Statistics */}
@@ -917,6 +1231,28 @@ const AdminPage = ({ onAddBappa }) => {
         <AddBappaModal
           onClose={() => setShowAddModal(false)}
           onAddBappa={onAddBappa}
+        />
+      )}
+      {showMessageModal && (
+        <MessageManagerModal
+          onClose={() => setShowMessageModal(false)}
+          onSubmit={handleSaveMessageTemplate}
+          isSaving={isSavingMessage}
+          formValues={messageFormValues}
+          onFormChange={handleMessageFormChange}
+          messages={advertisementMessages}
+          selectedMessageId={selectedMessageId}
+          onCreateNew={handleCreateNewMessage}
+          onSelectMessage={(id) => {
+            const selected = advertisementMessages.find((item) => item.id === id);
+            setSelectedMessageId(id);
+            if (selected) {
+              setMessageFormValues({
+                title: selected.title || '',
+                message: selected.message || '',
+              });
+            }
+          }}
         />
       )}
       

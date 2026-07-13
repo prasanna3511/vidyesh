@@ -7,10 +7,7 @@ const LoginModal = ({ onClose }) => {
   const { signInEmailPassword, isLoading, isError, error } = useSignInEmailPassword();
 
   const handleLogin = async () => {
-    const { isSuccess } = await signInEmailPassword(email, password);
-    if (isSuccess) {
-      onClose();
-    }
+    await signInEmailPassword(email, password);
   };
 
   return (

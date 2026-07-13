@@ -1,6 +1,9 @@
 import jsPDF from 'jspdf';
 import logo from '../assets/logo.png';
 
+const MM_TO_PX = 3.7795275591;
+const DEVANAGARI_REGEX = /[\u0900-\u097F]/;
+
 const loadImage = async (url) => {
   const res = await fetch(url);
   const blob = await res.blob();
@@ -21,6 +24,78 @@ const loadImage = async (url) => {
     dataUrl: canvas.toDataURL('image/jpeg', 0.95),
     width: bitmap.width,
     height: bitmap.height,
+  };
+};
+
+const wrapCanvasText = (ctx, text, maxWidth) => {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  if (words.length === 0) return ['-'];
+
+  const lines = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    if (ctx.measureText(testLine).width <= maxWidth) {
+      currentLine = testLine;
+      continue;
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+      currentLine = '';
+    }
+
+    if (ctx.measureText(word).width <= maxWidth) {
+      currentLine = word;
+      continue;
+    }
+
+    let chunk = '';
+    for (const char of word) {
+      const testChunk = `${chunk}${char}`;
+      if (ctx.measureText(testChunk).width <= maxWidth) {
+        chunk = testChunk;
+      } else {
+        if (chunk) lines.push(chunk);
+        chunk = char;
+      }
+    }
+    currentLine = chunk;
+  }
+
+  if (currentLine) lines.push(currentLine);
+  return lines;
+};
+
+const createTextImage = (text, widthMm, fontSizePx = 18) => {
+  const scale = 2;
+  const paddingPx = 8;
+  const widthPx = Math.max(1, Math.round(widthMm * MM_TO_PX * scale));
+  const measureCanvas = document.createElement('canvas');
+  const measureCtx = measureCanvas.getContext('2d');
+  const fontFamily = '"Noto Sans Devanagari", "Mangal", "Arial Unicode MS", sans-serif';
+  measureCtx.font = `600 ${fontSizePx}px ${fontFamily}`;
+  const lines = wrapCanvasText(measureCtx, text, widthPx - paddingPx * 2);
+  const lineHeightPx = Math.round(fontSizePx * 1.35);
+  const heightPx = lineHeightPx * lines.length + paddingPx * 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = widthPx;
+  canvas.height = heightPx;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, widthPx, heightPx);
+  ctx.font = `600 ${fontSizePx}px ${fontFamily}`;
+  ctx.fillStyle = '#0f172a';
+  ctx.textBaseline = 'top';
+
+  lines.forEach((line, index) => {
+    ctx.fillText(line, paddingPx, paddingPx + index * lineHeightPx);
+  });
+
+  return {
+    dataUrl: canvas.toDataURL('image/png'),
+    heightMm: heightPx / (MM_TO_PX * scale),
   };
 };
 
@@ -95,6 +170,9 @@ export async function generateBookingPdf(bappa, options = {}) {
 
   const actualPrice = bappa.discount_price !== null ? Number(bappa.discount_price) : Number(bappa.price);
   const remainingAmount = actualPrice - Number(bappa.paid_amount || 0);
+  const suggestionsText = String(bappa.suggestions || 'None');
+  const hasDevanagariSuggestions = DEVANAGARI_REGEX.test(suggestionsText);
+  const suggestionTextImage = hasDevanagariSuggestions ? createTextImage(suggestionsText, 74) : null;
 
   doc.setFillColor(colors.gray[50].r, colors.gray[50].g, colors.gray[50].b);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
@@ -205,7 +283,8 @@ export async function generateBookingPdf(bappa, options = {}) {
   drawLabelValue('Remaining', formatCurrency(remainingAmount), margin + 149, financeY + 17, 34, remainingAmount > 0 ? colors.warning : colors.success, 10);
 
   const customerY = financeY + financeHeight + 8;
-  drawCard(margin, customerY, contentWidth, 34, { r: 255, g: 255, b: 255 });
+  const customerHeight = suggestionTextImage ? Math.max(34, 26 + suggestionTextImage.heightMm) : 34;
+  drawCard(margin, customerY, contentWidth, customerHeight, { r: 255, g: 255, b: 255 });
   doc.setTextColor(colors.secondary.r, colors.secondary.g, colors.secondary.b);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
@@ -214,9 +293,17 @@ export async function generateBookingPdf(bappa, options = {}) {
 
   drawLabelValue('Full Name', fitTextToWidth(bappa.fullName, 54), margin + 5, customerY + 18, 54, colors.gray[900], 9);
   drawLabelValue('Phone Number', fitTextToWidth(bappa.phoneNumber, 34), margin + 65, customerY + 18, 34, colors.gray[900], 9);
-  drawLabelValue('Special Instructions', fitTextToWidth(bappa.suggestions || 'None', 74), margin + 105, customerY + 18, 74, colors.gray[900], 9);
+  if (suggestionTextImage) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(colors.gray[500].r, colors.gray[500].g, colors.gray[500].b);
+    doc.text('Special Instructions', margin + 105, customerY + 18);
+    doc.addImage(suggestionTextImage.dataUrl, 'PNG', margin + 105, customerY + 20, 74, suggestionTextImage.heightMm);
+  } else {
+    drawLabelValue('Special Instructions', fitTextToWidth(suggestionsText, 74), margin + 105, customerY + 18, 74, colors.gray[900], 9);
+  }
 
-  const statusY = customerY + 42;
+  const statusY = customerY + customerHeight + 8;
   drawCard(margin, statusY, contentWidth, 34, { r: 255, g: 255, b: 255 });
   doc.setTextColor(colors.secondary.r, colors.secondary.g, colors.secondary.b);
   doc.setFont('helvetica', 'bold');
