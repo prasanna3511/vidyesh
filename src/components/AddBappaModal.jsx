@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { X, Upload, Crown, Ruler, IndianRupee } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { X, Upload, Crown, Ruler, IndianRupee, Camera } from "lucide-react";
 import { gql, useMutation } from '@apollo/client';
 import  nhost from '../nhost';
 
@@ -60,6 +60,8 @@ const INSERT_MURTI_IMAGE = gql`
 
 const AddBappaModal = ({ onClose, onAddBappa }) => {
   const [insertMurtiImage] = useMutation(INSERT_MURTI_IMAGE);
+  const galleryInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     id: "",
@@ -80,14 +82,64 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
     }));
   };
 
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const loadImageElement = (src) =>
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = src;
+    });
+
+  const blobToFile = (blob, originalName) => {
+    const safeBaseName = String(originalName || "murti-image").replace(/\.[^.]+$/, "");
+    return new File([blob], `${safeBaseName}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  };
+
+  const normalizeImageFile = async (file) => {
+    if (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp") {
+      return file;
+    }
+
+    const dataUrl = await readFileAsDataUrl(file);
+    const image = await loadImageElement(dataUrl);
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+    canvas.getContext("2d").drawImage(image, 0, 0);
+
+    const normalizedBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Failed to convert camera image."));
+          return;
+        }
+        resolve(blob);
+      }, "image/jpeg", 0.92);
+    });
+
+    return blobToFile(normalizedBlob, file.name);
+  };
+
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     
     if (files.length === 0) return;
   
     try {
+      const normalizedFiles = await Promise.all(files.map((file) => normalizeImageFile(file)));
       const imagePreviews = await Promise.all(
-        files.map(
+        normalizedFiles.map(
           (file) =>
             new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -101,8 +153,9 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
       setFormData((prev) => ({
         ...prev,
         images: [...prev.images, ...imagePreviews], // Append new images
-        imageFiles: [...prev.imageFiles, ...files], // Append new files
+        imageFiles: [...prev.imageFiles, ...normalizedFiles], // Append new files
       }));
+      e.target.value = "";
     } catch (error) {
       console.error("Error reading files:", error);
       alert("Error reading image files");
@@ -312,12 +365,40 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
               <Upload className="h-4 w-4 inline mr-2" />
               Bappa Images
             </label>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                <Upload className="mr-2 inline h-4 w-4" />
+                Upload From Gallery
+              </button>
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex-1 rounded-xl border border-green-300 bg-green-50 px-4 py-3 font-medium text-green-700 transition hover:bg-green-100"
+              >
+                <Camera className="mr-2 inline h-4 w-4" />
+                Capture From Camera
+              </button>
+            </div>
             <input
+              ref={galleryInputRef}
               type="file"
               accept="image/*"
               multiple
               onChange={handleImageChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+              className="hidden"
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              capture="environment"
+              onChange={handleImageChange}
+              className="hidden"
             />
             
             {formData.images.length > 0 && (
@@ -347,7 +428,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
             )}
 
             <p className="text-sm text-gray-500 mt-2">
-              You can select multiple images. If no images are uploaded, a default image will be used.
+              You can upload from gallery or open the camera directly. If no images are uploaded, a default image will be used.
             </p>
           </div>
 

@@ -5,27 +5,67 @@ const MM_TO_PX = 3.7795275591;
 const DEVANAGARI_REGEX = /[\u0900-\u097F]/;
 const PDF_EXCLUDED_SUGGESTIONS = new Set(['कलर टचअप']);
 
-const loadImage = async (url) => {
-  const res = await fetch(url);
-  const blob = await res.blob();
+const loadImageFromElement = (source) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
 
-  let bitmap;
-  try {
-    bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
-  } catch {
-    bitmap = await createImageBitmap(blob);
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth || image.width;
+      canvas.height = image.naturalHeight || image.height;
+      canvas.getContext('2d').drawImage(image, 0, 0);
+
+      resolve({
+        dataUrl: canvas.toDataURL('image/jpeg', 0.95),
+        width: canvas.width,
+        height: canvas.height,
+      });
+    };
+
+    image.onerror = () => reject(new Error('Image element failed to load.'));
+    image.src = source;
+  });
+
+const loadImage = async (url) => {
+  if (String(url || '').startsWith('data:image/')) {
+    return loadImageFromElement(url);
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0);
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
 
-  return {
-    dataUrl: canvas.toDataURL('image/jpeg', 0.95),
-    width: bitmap.width,
-    height: bitmap.height,
-  };
+    try {
+      let bitmap;
+      try {
+        bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+      } catch {
+        bitmap = await createImageBitmap(blob);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+
+      return {
+        dataUrl: canvas.toDataURL('image/jpeg', 0.95),
+        width: bitmap.width,
+        height: bitmap.height,
+      };
+    } catch (bitmapError) {
+      const objectUrl = URL.createObjectURL(blob);
+
+      try {
+        return await loadImageFromElement(objectUrl);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+  } catch (fetchError) {
+    return loadImageFromElement(url);
+  }
 };
 
 const wrapCanvasText = (ctx, text, maxWidth) => {
@@ -230,9 +270,9 @@ export async function generateBookingPdf(bappa, options = {}) {
   const imageCardHeight = 52;
   drawCard(margin, topY, imageCardWidth, imageCardHeight, { r: 255, g: 255, b: 255 });
 
-  if (bappa.imageUrl || bappa.image) {
+  if (bappa.imageDataUrl || bappa.imageUrl || bappa.image) {
     try {
-      const { dataUrl, width, height } = await loadImage(bappa.imageUrl || bappa.image);
+      const { dataUrl, width, height } = await loadImage(bappa.imageDataUrl || bappa.imageUrl || bappa.image);
       const innerWidth = imageCardWidth - 8;
       const innerHeight = imageCardHeight - 8;
       const scale = Math.min(innerWidth / width, innerHeight / height);

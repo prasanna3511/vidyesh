@@ -9,9 +9,28 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
   if (!bappa) return null;
 
+  const getImageDataUrl = async () => {
+    if (!imageurl) return null;
+
+    try {
+      const response = await fetch(imageurl);
+      const blob = await response.blob();
+
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Failed to prepare image for PDF:', error);
+      return null;
+    }
+  };
 
   const downloadPDF = async () => {
-    await generateBookingPdf({ ...bappa, imageUrl: imageurl });
+    const imageDataUrl = await getImageDataUrl();
+    await generateBookingPdf({ ...bappa, imageUrl: imageurl, imageDataUrl });
   };
   const actualPrice = bappa.discount_price !== null ? Number(bappa.discount_price) : Number(bappa.price);
   const remainingAmount = actualPrice - Number(bappa.paid_amount);
