@@ -6,6 +6,22 @@ import backgroundImg from "../assets/dagdusheth.jpg";
 import Contact from "./contact";
 import { useAuthenticated } from "@nhost/react";
 
+const MURTI_DESIGN_OPTIONS = [
+  "Dagdusheth",
+  "Bal Ganesh",
+  "Asan Mandi",
+  "Shivrekar",
+  "Mhaisuri",
+  "Kamal Asan",
+  "Peshavai",
+  "Raja",
+  "Savkar",
+  "Varad HAst",
+  "Phillips",
+  "Chaurang",
+  "Furniture",
+];
+
 const GET_MURTI_HISTORY = gql`
   query MyQuery {
     murti_history {
@@ -21,6 +37,8 @@ const GET_MURTI_HISTORY = gql`
       paid_amount
       discount_price
       paid_amount_sc
+      payment_mode
+      murti_design
       suggestions
       booked_by
     }
@@ -32,6 +50,7 @@ const UserPage = ({ onBookBappa }) => {
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [sizeFilter, setSizeFilter] = useState("");
+  const [designFilter, setDesignFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [showSplash, setShowSplash] = useState(true);
 
@@ -85,11 +104,14 @@ const UserPage = ({ onBookBappa }) => {
     );
   }
 
-  const bappas = data?.murti_history || [];
+  const bappas = (data?.murti_history || []).filter(
+    (bappa) => bappa.booking_status === "available"
+  );
 
 // First apply size filter, then search filter
 const filteredBappas = bappas
   .filter((bappa) => !sizeFilter || bappa.size === sizeFilter)
+  .filter((bappa) => !designFilter || bappa.murti_design === designFilter)
   .filter((bappa) =>
     searchText.trim() === ""
       ? true
@@ -127,6 +149,25 @@ const filteredBappas = bappas
       {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
         <option key={value} value={`${value} inches`}>
           {value} inches
+        </option>
+      ))}
+    </select>
+  </div>
+
+  <div className="w-64">
+    <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
+      Filter by Design
+    </label>
+    <select
+      name="design"
+      value={designFilter}
+      onChange={(e) => setDesignFilter(e.target.value)}
+      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"
+    >
+      <option value="">All Designs</option>
+      {MURTI_DESIGN_OPTIONS.map((design) => (
+        <option key={design} value={design}>
+          {design}
         </option>
       ))}
     </select>

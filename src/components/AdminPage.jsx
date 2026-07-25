@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight, Pencil, X, MessageSquareText } from 'lucide-react';
+import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Pencil, X, MessageSquareText } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
 import { useAuthenticated } from '@nhost/react';
 import LoginModal from './LoginModal';
@@ -12,6 +12,22 @@ import ApproveBappaModal from './ApproveBappaModal';
 import RoundUpModal from './RoundupModal'; // Adjust path if needed
 import { generateBookingPdf } from '../utils/bookingPdf';
 
+const SUPPLIER_OPTIONS = ['P.B', 'S.H', 'N.P', 'M.H', 'A.M', 'D.P'];
+const MURTI_DESIGN_OPTIONS = [
+  'Dagdusheth',
+  'Bal Ganesh',
+  'Asan Mandi',
+  'Shivrekar',
+  'Mhaisuri',
+  'Kamal Asan',
+  'Peshavai',
+  'Raja',
+  'Savkar',
+  'Varad HAst',
+  'Phillips',
+  'Chaurang',
+  'Furniture',
+];
 
 const DELETE_BAPPA = gql`
   mutation DeleteBappa($id: Int!) {
@@ -64,12 +80,26 @@ mutation UpdateBappa(
   $murti_id: String!,
   $final_price: String!,
   $discount_price: numeric,
+  $paid_amount: numeric,
+  $address: String,
   $booking_status: String!,
-  $date: date!
+  $date: date!,
+  $Supplier: String!,
+  $murti_design: String!
 ) {
   update_murti_history(
     where: { id: { _eq: $id } },
-    _set: { murti_id: $murti_id, final_price: $final_price, discount_price: $discount_price, booking_status: $booking_status, date: $date }
+    _set: {
+      murti_id: $murti_id,
+      final_price: $final_price,
+      discount_price: $discount_price,
+      paid_amount: $paid_amount,
+      address: $address,
+      booking_status: $booking_status,
+      date: $date,
+      Supplier: $Supplier,
+      murti_design: $murti_design
+    }
   ) {
     affected_rows
   }
@@ -89,12 +119,16 @@ const GET_MURTI_HISTORY = gql`
       customer_name
       customer_phone
       customer_email
+      address
       paid_amount
       discount_price
       paid_amount_sc
+      payment_mode
       suggestions
       booked_by
       date
+      supplier: Supplier
+      murti_design
     }
   }
 `;
@@ -178,6 +212,7 @@ const UPDATE_AD_MESSAGE_LOWER = gql`
 const STATUS_OPTIONS = ['available', 'pending', 'booked', 'delivered'];
 
 const getCurrentDbDate = () => new Date().toISOString().split('T')[0];
+const getCurrentYear = () => String(new Date().getFullYear());
 const getWhatsAppNumber = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
   if (digits.length === 10) return `91${digits}`;
@@ -187,8 +222,8 @@ const getWhatsAppNumber = (value) => {
 
 const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-      <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4">
+    <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4">
         <h3 className="text-lg font-bold text-white">Edit Murti</h3>
         <button
           onClick={onClose}
@@ -199,7 +234,7 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
         </button>
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-4 overflow-y-auto p-5">
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">Murti ID</label>
           <input
@@ -231,6 +266,19 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
           />
         </div>
 
+        {(values.booking_status === 'booked' || values.booking_status === 'delivered') && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Paid Amount</label>
+            <input
+              type="text"
+              className="w-full rounded-xl border px-4 py-3 text-gray-800"
+              value={values.paid_amount ?? ''}
+              onChange={(e) => onChange('paid_amount', e.target.value)}
+              placeholder="Enter paid amount"
+            />
+          </div>
+        )}
+
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
           <select
@@ -245,9 +293,58 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
             ))}
           </select>
         </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Supplier</label>
+          <select
+            className="w-full rounded-xl border px-4 py-3 text-gray-800"
+            value={values.supplier || ''}
+            onChange={(e) => onChange('supplier', e.target.value)}
+          >
+            <option value="" disabled>
+              Select Supplier
+            </option>
+            {SUPPLIER_OPTIONS.map((supplier) => (
+              <option key={supplier} value={supplier}>
+                {supplier}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Murti Design</label>
+          <select
+            className="w-full rounded-xl border px-4 py-3 text-gray-800"
+            value={values.murti_design || ''}
+            onChange={(e) => onChange('murti_design', e.target.value)}
+          >
+            <option value="" disabled>
+              Select Murti Design
+            </option>
+            {MURTI_DESIGN_OPTIONS.map((design) => (
+              <option key={design} value={design}>
+                {design}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {values.booking_status === 'booked' && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Address</label>
+            <textarea
+              className="w-full rounded-xl border px-4 py-3 text-gray-800"
+              value={values.address || ''}
+              onChange={(e) => onChange('address', e.target.value)}
+              rows={3}
+              placeholder="Enter address"
+            />
+          </div>
+        )}
       </div>
 
-      <div className="flex justify-end gap-3 border-t px-5 py-4">
+      <div className="flex shrink-0 justify-end gap-3 border-t bg-white px-5 py-4">
         <button
           onClick={onClose}
           className="rounded-xl border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
@@ -269,6 +366,7 @@ const MessageManagerModal = ({
   onClose,
   onSubmit,
   isSaving,
+  isLoadingMessages,
   formValues,
   onFormChange,
   messages,
@@ -280,8 +378,8 @@ const MessageManagerModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-4">
+      <div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-4">
           <h3 className="text-lg font-bold text-white">Create Message</h3>
           <button
             onClick={onClose}
@@ -292,7 +390,7 @@ const MessageManagerModal = ({
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
+        <div className="space-y-4 overflow-y-auto p-5">
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Title *</label>
             <input
@@ -338,8 +436,10 @@ const MessageManagerModal = ({
           </div>
 
           {showPreviousMessages && (
-            <div className="max-h-72 space-y-3 overflow-y-auto rounded-2xl border bg-gray-50 p-4">
-              {messages.length === 0 ? (
+            <div className="max-h-56 space-y-3 overflow-y-auto rounded-2xl border bg-gray-50 p-4">
+              {isLoadingMessages ? (
+                <p className="text-sm text-gray-500">Loading previous messages...</p>
+              ) : messages.length === 0 ? (
                 <p className="text-sm text-gray-500">No previous messages yet.</p>
               ) : (
                 messages.map((item, index) => {
@@ -366,7 +466,7 @@ const MessageManagerModal = ({
           )}
         </div>
 
-        <div className="flex justify-end gap-3 border-t px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-3 border-t bg-white px-5 py-4">
           <button
             onClick={onClose}
             className="rounded-xl border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
@@ -499,6 +599,8 @@ const AdminPage = ({ onAddBappa }) => {
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [murtiImagesData, setMurtiImagesData] = useState({});
   const [sizeFilter, setSizeFilter] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
+  const [designFilter, setDesignFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [pendingApprovalBappa, setPendingApprovalBappa] = useState(null);
   const [roundUpBappa, setRoundUpBappa] = useState(null);
@@ -507,10 +609,16 @@ const AdminPage = ({ onAddBappa }) => {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [messageFormValues, setMessageFormValues] = useState({ title: '', message: '' });
   const [isSavingMessage, setIsSavingMessage] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [showBookedMurtiDetails, setShowBookedMurtiDetails] = useState(false);
+  const [showAllMurtiDetails, setShowAllMurtiDetails] = useState(false);
+  const [showMurtiTallyDetails, setShowMurtiTallyDetails] = useState(false);
   
   const [filterStatus, setFilterStatus] = useState(""); // Renamed for clarity to avoid confusion with bappa.booking_status
+  const [yearFilter, setYearFilter] = useState(getCurrentYear());
 
   const loadAdvertisementMessages = async (useLatestAsDefault = false) => {
+    setIsLoadingMessages(true);
     try {
       const upperResult = await nhost.graphql.request(GET_AD_MESSAGES_UPPER);
       const records = upperResult?.data?.advertisement_message || upperResult?.advertisement_message || [];
@@ -528,7 +636,13 @@ const AdminPage = ({ onAddBappa }) => {
       } catch (lowerError) {
         console.error('Failed to load advertisement messages:', lowerError);
         setAdvertisementMessages([]);
+        setSelectedMessageId(null);
+      } finally {
+        setIsLoadingMessages(false);
       }
+      return;
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
@@ -570,6 +684,11 @@ const AdminPage = ({ onAddBappa }) => {
 
   useEffect(() => {
     if (!showMessageModal) return;
+    loadAdvertisementMessages(false);
+  }, [showMessageModal]);
+
+  useEffect(() => {
+    if (!showMessageModal) return;
 
     const selected = advertisementMessages.find((item) => item.id === selectedMessageId);
     if (selected) {
@@ -588,7 +707,11 @@ const AdminPage = ({ onAddBappa }) => {
       murti_id: bappa.name,
       final_price: bappa.price,
       discount_price: bappa.discount_price || "",
-      booking_status: bappa.booking_status || "available"
+      paid_amount: bappa.paid_amount ?? "",
+      address: bappa.address || "",
+      booking_status: bappa.booking_status || "available",
+      supplier: bappa.supplier || "",
+      murti_design: bappa.murti_design || "",
     });
   };
 
@@ -614,14 +737,22 @@ const AdminPage = ({ onAddBappa }) => {
         editedValues.discount_price === "" || editedValues.discount_price === null || editedValues.discount_price === undefined
           ? null
           : Number(editedValues.discount_price);
+      const paidAmount =
+        editedValues.paid_amount === "" || editedValues.paid_amount === null || editedValues.paid_amount === undefined
+          ? null
+          : Number(editedValues.paid_amount);
       await updateBappa({
         variables: {
           id,
           murti_id: editedValues.murti_id,
           final_price: editedValues.final_price,
           discount_price: discountPrice,
+          paid_amount: paidAmount,
+          address: editedValues.booking_status === 'booked' ? (editedValues.address?.trim() || null) : null,
           booking_status: editedValues.booking_status,
-          date: getCurrentDbDate()
+          date: getCurrentDbDate(),
+          Supplier: editedValues.supplier,
+          murti_design: editedValues.murti_design,
         },
       });
       setEditingId(null);
@@ -733,10 +864,11 @@ const AdminPage = ({ onAddBappa }) => {
         'Customer Details',
         `Name: ${bappa.fullName || '-'}`,
         `Phone: ${bappa.phoneNumber || '-'}`,
+        `Booked by: ${bappa.booked_by || '-'}`,
+        bappa.address ? `Address: ${bappa.address}` : null,
         `Murti: ${bappa.name || '-'}`,
         `Size: ${bappa.size || '-'}`,
-        `Status: ${bappa.booking_status || '-'}`,
-      ].join('\n'),
+      ].filter(Boolean).join('\n'),
       pdfLink ? `PDF Link: ${pdfLink}` : 'PDF link could not be generated automatically.',
     ]
       .filter(Boolean)
@@ -804,14 +936,18 @@ const AdminPage = ({ onAddBappa }) => {
     booking_status: item.booking_status,
     fullName: item.customer_name,
     phoneNumber: item.customer_phone,
-    paid_amount: item.paid_amount,
-    paid_amount_sc: item.paid_amount_sc,
+      paid_amount: item.paid_amount,
+      paid_amount_sc: item.paid_amount_sc,
+      payment_mode: item.payment_mode || 'Online',
+      address: item.address,
     suggestions: item.suggestions, // Make sure suggestions are passed
     customer_email: item.customer_email, // Make sure email is passed
     booked_by: item.booked_by,
     images: murtiImagesData[item.id] || [], // Add images array
     discount_price:item.discount_price,
-    date: item.date || null
+    date: item.date || null,
+    supplier: item.supplier || '',
+    murti_design: item.murti_design || '',
   }));
 
   const bookings = murtiData
@@ -823,6 +959,28 @@ const AdminPage = ({ onAddBappa }) => {
       bookedAt: item.date || null,
     }));
 
+  const getYearFromDate = (dateValue) => {
+    if (!dateValue) return null;
+    const [year] = String(dateValue).split('-');
+    return year || null;
+  };
+
+  const availableYears = [...new Set(
+    bappas
+      .filter((b) => (b.booking_status === "booked" || b.booking_status === "delivered") && b.date)
+      .map((b) => getYearFromDate(b.date))
+      .concat(getCurrentYear())
+      .filter(Boolean)
+  )].sort((a, b) => Number(b) - Number(a));
+
+  const matchesYearFilter = (bappa) => {
+    if (!yearFilter) return true;
+    if (bappa.booking_status !== "booked" && bappa.booking_status !== "delivered") return true;
+    if (!bappa.date) return false;
+
+    return getYearFromDate(bappa.date) === yearFilter;
+  };
+
   const applyFilters = (bappaList) => {
     return bappaList
       .filter((b) => {
@@ -832,7 +990,10 @@ const AdminPage = ({ onAddBappa }) => {
         }
         return b.booking_status === filterStatus;
       })
+      .filter(matchesYearFilter)
       .filter((b) => !sizeFilter || b.size === sizeFilter)
+      .filter((b) => !supplierFilter || b.supplier === supplierFilter)
+      .filter((b) => !designFilter || b.murti_design === designFilter)
       .filter((b) =>
         searchText.trim() === ""
           ? true
@@ -964,6 +1125,45 @@ const AdminPage = ({ onAddBappa }) => {
           ))}
         </select>
 
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+        >
+          <option value="">All Years</option>
+          {availableYears.map((year) => (
+            <option key={year} value={String(year)}>
+              {year}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={supplierFilter}
+          onChange={(e) => setSupplierFilter(e.target.value)}
+        >
+          <option value="">All Suppliers</option>
+          {SUPPLIER_OPTIONS.map((supplier) => (
+            <option key={supplier} value={supplier}>
+              {supplier}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={designFilter}
+          onChange={(e) => setDesignFilter(e.target.value)}
+        >
+          <option value="">All Designs</option>
+          {MURTI_DESIGN_OPTIONS.map((design) => (
+            <option key={design} value={design}>
+              {design}
+            </option>
+          ))}
+        </select>
+
         {/* Search Box */}
         <input
           type="text"
@@ -976,228 +1176,278 @@ const AdminPage = ({ onAddBappa }) => {
 
       {/* Booked Bappas */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center space-x-2">
-          <Calendar className="h-6 w-6 text-green-500" />
-          <span>Booked Murti</span>
-        </h3>
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h3 className="flex items-center space-x-2 text-2xl font-bold text-gray-800">
+            <Calendar className="h-6 w-6 text-green-500" />
+            <span>Booked Murti</span>
+          </h3>
+          <button
+            type="button"
+            onClick={() => setShowBookedMurtiDetails((prev) => !prev)}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            <span>{showBookedMurtiDetails ? 'Hide Details' : 'Show Details'}</span>
+            {showBookedMurtiDetails ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+        </div>
 
-        {bookedBappas.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No bookings yet for the current filters.</p>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {bookedBappas.map((bappa,index) => {
-              const booking = getBookingDetails(bappa.id);
-              return (
-                
-                <div key={bappa.id}
-                onClick={() => setSelectedBappa(bappa)}
-                className="relative border rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="mb-4 flex justify-end gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRoundUpBappa(bappa);
-                      }}
-                      className="rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:from-yellow-500 hover:to-yellow-700 focus:outline-none"
-                      title="Round Up"
-                    >
-                      Round up
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSendMessage(bappa);
-                      }}
-                      className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:from-green-600 hover:to-green-700 focus:outline-none"
-                      title="Send Message"
-                    >
-                      Send Message
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditClick(bappa);
-                      }}
-                      className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
-                      title="Edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </div>
+        {showBookedMurtiDetails && (
+          <>
+            {bookedBappas.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No bookings yet for the current filters.</p>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {bookedBappas.map((bappa,index) => {
+                  const booking = getBookingDetails(bappa.id);
+                  return (
+                    
+                    <div key={bappa.id}
+                    onClick={() => setSelectedBappa(bappa)}
+                    className="relative border rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <div className="mb-4 flex justify-end gap-2">
+                        {/* <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRoundUpBappa(bappa);
+                          }}
+                          className="rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:from-yellow-500 hover:to-yellow-700 focus:outline-none"
+                          title="Round Up"
+                        >
+                          Round up
+                        </button> */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSendMessage(bappa);
+                          }}
+                          className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:from-green-600 hover:to-green-700 focus:outline-none"
+                          title="Send Message"
+                        >
+                          Send Message
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(bappa);
+                          }}
+                          className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      </div>
 
+
+                      <div className="flex space-x-4">
+                        <ImageSlider 
+                          images={bappa.images}
+                          defaultImage={bappa.image}
+                          altText={bappa.name}
+                          className="w-20 h-20 flex-shrink-0"
+                        />
+                        <div className="flex-1">
+                          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <h4 className="font-bold text-gray-800">{bappa.name}</h4>
+                            <span  className={`px-2 py-1 rounded-full text-xs font-bold ${
+        bappa.booking_status === 'booked'
+          ? 'bg-green-100 text-green-700'
+          : bappa.booking_status === 'pending'
+          ? 'bg-blue-100 text-blue-700'
+          : bappa.booking_status === 'delivered'
+          ? 'bg-gray-200 text-gray-700'
+          : 'bg-gray-100 text-gray-500'
+      }`}>
+                              {bappa.booking_status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">ID: #{index+1} | {bappa.size}</p>
+                          <p className="font-bold text-green-600">₹{bappa.price}</p>
+                          <div>
+                            <p className="text-sm text-blue-700">Discount Price: {bappa.discount_price ? "₹" + bappa.discount_price : "-"}</p>
+                          </div>
+
+
+                          {booking && (
+                            <div className="mt-3 space-y-1 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <User className="h-4 w-4 text-gray-500" />
+                                <span>{booking.fullName}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Phone className="h-4 w-4 text-gray-500" />
+                                <span>{booking.phoneNumber}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Mail className="h-4 w-4 text-gray-500" />
+                                <span className="break-all">Booked by: {bappa.booked_by || 'Not recorded'}</span>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                Booked: {booking.bookedAt ? new Date(booking.bookedAt).toLocaleDateString() : 'Not available'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* All Bappas */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h3 className="flex items-center space-x-2 text-2xl font-bold text-gray-800">
+            <List className="h-6 w-6 text-blue-500" />
+            <span>All Murti</span>
+          </h3>
+          <button
+            type="button"
+            onClick={() => setShowAllMurtiDetails((prev) => !prev)}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            <span>{showAllMurtiDetails ? 'Hide Details' : 'Show Details'}</span>
+            {showAllMurtiDetails ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        {showAllMurtiDetails && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {allFilteredBappas.length === 0 ? (
+              <p className="text-gray-500 text-center py-8 col-span-full">No murti found matching the current filters.</p>
+            ) : (
+              allFilteredBappas.map((bappa,index) => ( 
+                <div key={bappa.id} className={`relative border rounded-xl p-4 ${bappa.booked ? 'bg-green-50 border-green-200' : 'hover:shadow-md'} transition-all`}>
+
+                  <button
+                    onClick={() => handleEditClick(bappa)}
+                    className="absolute top-2 right-10 rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(bappa.id)}
+                    className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
 
                   <div className="flex space-x-4">
                     <ImageSlider 
                       images={bappa.images}
                       defaultImage={bappa.image}
                       altText={bappa.name}
-                      className="w-20 h-20 flex-shrink-0"
+                      className="w-16 h-16 flex-shrink-0"
                     />
                     <div className="flex-1">
-                      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <div className="flex items-center justify-between mb-2">
                         <h4 className="font-bold text-gray-800">{bappa.name}</h4>
-                        <span  className={`px-2 py-1 rounded-full text-xs font-bold ${
-    bappa.booking_status === 'booked'
-      ? 'bg-green-100 text-green-700'
-      : bappa.booking_status === 'pending'
-      ? 'bg-blue-100 text-blue-700'
-      : bappa.booking_status === 'delivered'
-      ? 'bg-gray-200 text-gray-700'
-      : 'bg-gray-100 text-gray-500'
-  }`}>
+                        <span className={`absolute bottom-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow ${bappa.booked
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                          }`}>
                           {bappa.booking_status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">ID: #{index+1} | {bappa.size}</p>
+                      <p className="text-sm text-gray-600">ID: #{index+1}</p>
+                      <p className="text-sm text-gray-600">{bappa.size}</p>
                       <p className="font-bold text-green-600">₹{bappa.price}</p>
-                      <div>
-                        <p className="text-sm text-blue-700">Discount Price: {bappa.discount_price ? "₹" + bappa.discount_price : "-"}</p>
-                      </div>
-
-
-                      {booking && (
-                        <div className="mt-3 space-y-1 text-sm">
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-gray-500" />
-                            <span>{booking.fullName}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Phone className="h-4 w-4 text-gray-500" />
-                            <span>{booking.phoneNumber}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Mail className="h-4 w-4 text-gray-500" />
-                            <span className="break-all">Booked by: {bappa.booked_by || 'Not recorded'}</span>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Booked: {booking.bookedAt ? new Date(booking.bookedAt).toLocaleDateString() : 'Not available'}
-                          </p>
+                      {bappa.booking_status === "pending" && <>
+                        <div className="flex items-center space-x-2">
+                          <User className="h-4 w-4 text-gray-500" />
+                          <span>{bappa.fullName}</span>
                         </div>
-                      )}
+                        <div className="flex items-center space-x-2">
+                          <Phone className="h-4 w-4 text-gray-500" />
+                          <span>{bappa.phoneNumber}</span>
+                        </div>
+                        <button
+                          className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                          // onClick={() => handleApprove(bappa.id)}
+                          onClick={() => setPendingApprovalBappa(bappa)}
+                        >
+                          Approve
+                        </button>
+                      </>
+                      }
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
         )}
       </div>
 
-      {/* All Bappas */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center space-x-2">
-          <List className="h-6 w-6 text-blue-500" />
-          <span>All Murti</span>
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {allFilteredBappas.length === 0 ? (
-            <p className="text-gray-500 text-center py-8 col-span-full">No murti found matching the current filters.</p>
-          ) : (
-            allFilteredBappas.map((bappa,index) => ( 
-              <div key={bappa.id} className={`relative border rounded-xl p-4 ${bappa.booked ? 'bg-green-50 border-green-200' : 'hover:shadow-md'} transition-all`}>
-
-                <button
-                  onClick={() => handleEditClick(bappa)}
-                  className="absolute top-2 right-10 rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
-                  title="Edit"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(bappa.id)}
-                  className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                  title="Delete"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-
-                <div className="flex space-x-4">
-                  <ImageSlider 
-                    images={bappa.images}
-                    defaultImage={bappa.image}
-                    altText={bappa.name}
-                    className="w-16 h-16 flex-shrink-0"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold text-gray-800">{bappa.name}</h4>
-                      <span className={`absolute bottom-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow ${bappa.booked
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-100 text-blue-700'
-                        }`}>
-                        {bappa.booking_status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">ID: #{index+1}</p>
-                    <p className="text-sm text-gray-600">{bappa.size}</p>
-                    <p className="font-bold text-green-600">₹{bappa.price}</p>
-                    {bappa.booking_status === "pending" && <>
-                      <div className="flex items-center space-x-2">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span>{bappa.fullName}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Phone className="h-4 w-4 text-gray-500" />
-                        <span>{bappa.phoneNumber}</span>
-                      </div>
-                      <button
-                        className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-                        // onClick={() => handleApprove(bappa.id)}
-                        onClick={() => setPendingApprovalBappa(bappa)}
-                      >
-                        Approve
-                      </button>
-                    </>
-                    }
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
       {/* Murti Tally Section */}
       <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
-        <h3 className="text-2xl font-bold text-gray-800 mb-4">Murti Tally Summary</h3>
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h3 className="text-2xl font-bold text-gray-800">Murti Tally Summary</h3>
+          <button
+            type="button"
+            onClick={() => setShowMurtiTallyDetails((prev) => !prev)}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            <span>{showMurtiTallyDetails ? 'Hide Details' : 'Show Details'}</span>
+            {showMurtiTallyDetails ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+        </div>
 
 
         {/* Tally Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-200 rounded-xl">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3 text-left">#</th>
-                <th className="p-3 text-left">Murti ID</th>
-                <th className="p-3 text-left">Status</th>
-                <th className="p-3 text-left">Final Price</th>
-                <th className="p-3 text-left">Discounted Price</th>
-                <th className="p-3 text-left">Paid Amount</th>
-                <th className="p-3 text-left">Remaining</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allFilteredBappas.length === 0 ? (
+        {showMurtiTallyDetails && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-200 rounded-xl">
+              <thead className="bg-gray-100">
                 <tr>
-                  <td colSpan="6" className="p-3 text-center text-gray-500">No data available for the current filters.</td>
+                  <th className="p-3 text-left">#</th>
+                  <th className="p-3 text-left">Murti ID</th>
+                  <th className="p-3 text-left">Status</th>
+                  <th className="p-3 text-left">Final Price</th>
+                  <th className="p-3 text-left">Discounted Price</th>
+                  <th className="p-3 text-left">Paid Amount</th>
+                  <th className="p-3 text-left">Remaining</th>
                 </tr>
-              ) : (
-                allFilteredBappas.map((bappa, idx) => ( 
-                  <tr key={bappa.id} className="border-t">
-                    <td className="p-3">{idx + 1}</td>
-                    <td className="p-3">{bappa.name}</td>
-                    <td className="p-3 capitalize">{bappa.booking_status}</td>
-                    <td className="p-3">₹{bappa.price || 0}</td>
-                    <td className="p-3">₹{bappa.discount_price || "-"}</td> 
-                    <td className="p-3">₹{bappa.paid_amount || 0}</td>
-                    <td className="p-3">₹{(bappa.price || 0) - (bappa.paid_amount || 0)}</td>
+              </thead>
+              <tbody>
+                {allFilteredBappas.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="p-3 text-center text-gray-500">No data available for the current filters.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  allFilteredBappas.map((bappa, idx) => ( 
+                    <tr key={bappa.id} className="border-t">
+                      <td className="p-3">{idx + 1}</td>
+                      <td className="p-3">{bappa.name}</td>
+                      <td className="p-3 capitalize">{bappa.booking_status}</td>
+                      <td className="p-3">₹{bappa.price || 0}</td>
+                      <td className="p-3">₹{bappa.discount_price || "-"}</td> 
+                      <td className="p-3">₹{bappa.paid_amount || 0}</td>
+                      <td className="p-3">₹{(bappa.price || 0) - (bappa.paid_amount || 0)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Totals */}
         {/* <div className="mt-4 text-right space-y-1 font-semibold">
@@ -1238,6 +1488,7 @@ const AdminPage = ({ onAddBappa }) => {
           onClose={() => setShowMessageModal(false)}
           onSubmit={handleSaveMessageTemplate}
           isSaving={isSavingMessage}
+          isLoadingMessages={isLoadingMessages}
           formValues={messageFormValues}
           onFormChange={handleMessageFormChange}
           messages={advertisementMessages}

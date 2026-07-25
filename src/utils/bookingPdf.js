@@ -3,6 +3,7 @@ import logo from '../assets/logo.png';
 
 const MM_TO_PX = 3.7795275591;
 const DEVANAGARI_REGEX = /[\u0900-\u097F]/;
+const PDF_EXCLUDED_SUGGESTIONS = new Set(['कलर टचअप']);
 
 const loadImage = async (url) => {
   const res = await fetch(url);
@@ -170,7 +171,12 @@ export async function generateBookingPdf(bappa, options = {}) {
 
   const actualPrice = bappa.discount_price !== null ? Number(bappa.discount_price) : Number(bappa.price);
   const remainingAmount = actualPrice - Number(bappa.paid_amount || 0);
-  const suggestionsText = String(bappa.suggestions || 'None');
+  const filteredSuggestions = String(bappa.suggestions || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item) => !PDF_EXCLUDED_SUGGESTIONS.has(item));
+  const suggestionsText = filteredSuggestions.length > 0 ? filteredSuggestions.join(', ') : 'None';
   const hasDevanagariSuggestions = DEVANAGARI_REGEX.test(suggestionsText);
   const suggestionTextImage = hasDevanagariSuggestions ? createTextImage(suggestionsText, 74) : null;
 
@@ -268,7 +274,7 @@ export async function generateBookingPdf(bappa, options = {}) {
   drawLabelValue('Booked By', bappa.booked_by, summaryX + 5, topY + 33, 46);
 
   const financeY = topY + imageCardHeight + 8;
-  const financeHeight = 34;
+  const financeHeight = 42;
   drawCard(margin, financeY, contentWidth, financeHeight, { r: 255, g: 255, b: 255 });
   doc.setTextColor(colors.secondary.r, colors.secondary.g, colors.secondary.b);
   doc.setFont('helvetica', 'bold');
@@ -281,6 +287,7 @@ export async function generateBookingPdf(bappa, options = {}) {
   drawLabelValue('Discounted Price', bappa.discount_price !== null ? formatCurrency(bappa.discount_price) : 'Not applied', margin + 55, financeY + 17, 44, colors.accent, 9);
   drawLabelValue('Advance Paid', formatCurrency(bappa.paid_amount), margin + 109, financeY + 17, 34, colors.success, 10);
   drawLabelValue('Remaining', formatCurrency(remainingAmount), margin + 149, financeY + 17, 34, remainingAmount > 0 ? colors.warning : colors.success, 10);
+  drawLabelValue('Payment Mode', bappa.payment_mode || 'Online', margin + 5, financeY + 28, 40, colors.primary, 9);
 
   const customerY = financeY + financeHeight + 8;
   const customerHeight = suggestionTextImage ? Math.max(34, 26 + suggestionTextImage.heightMm) : 34;

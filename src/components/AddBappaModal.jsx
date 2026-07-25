@@ -3,14 +3,41 @@ import { X, Upload, Crown, Ruler, IndianRupee } from "lucide-react";
 import { gql, useMutation } from '@apollo/client';
 import  nhost from '../nhost';
 
+const SUPPLIER_OPTIONS = ["P.B", "S.H", "N.P", "M.H", "A.M", "D.P"];
+const MURTI_DESIGN_OPTIONS = [
+  "Dagdusheth",
+  "Bal Ganesh",
+  "Asan Mandi",
+  "Shivrekar",
+  "Mhaisuri",
+  "Kamal Asan",
+  "Peshavai",
+  "Raja",
+  "Savkar",
+  "Varad HAst",
+  "Phillips",
+  "Chaurang",
+  "Furniture",
+];
+
 const INSERT_MURTI = gql`
-  mutation InsertMurti($murti_id: String!, $final_price: String!, $size: String!, $booking_status: String!,$image: String!) {
+  mutation InsertMurti(
+    $murti_id: String!,
+    $final_price: String!,
+    $size: String!,
+    $booking_status: String!,
+    $image: String!,
+    $Supplier: String!,
+    $murti_design: String!
+  ) {
     insert_murti_history(objects: {
       murti_id: $murti_id,
       final_price: $final_price,
       size: $size,
       booking_status: $booking_status,
-      image: $image
+      image: $image,
+      Supplier: $Supplier,
+      murti_design: $murti_design
     }) {
       returning {
         id
@@ -38,6 +65,8 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
     id: "",
     size: "",
     price: "",
+    supplier: "",
+    murti_design: "",
     images: [], // array of base64 previews
     imageFiles: [], // actual File objects
   });
@@ -128,7 +157,9 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
           final_price: formData.price,
           size: formData.size,
           booking_status: "available",
-          image:" "
+          image:" ",
+          Supplier: formData.supplier,
+          murti_design: formData.murti_design,
         },
       });
   
@@ -150,6 +181,8 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
         size: formData.size,
         price: parseInt(formData.price),
         image: mainImageUrl,
+        supplier: formData.supplier,
+        murti_design: formData.murti_design,
       });
   
       onClose();
@@ -230,6 +263,48 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
               placeholder="Enter price in rupees"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Supplier
+            </label>
+            <select
+              name="supplier"
+              value={formData.supplier}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 bg-white"
+            >
+              <option value="" disabled>
+                Select Supplier
+              </option>
+              {SUPPLIER_OPTIONS.map((supplier) => (
+                <option key={supplier} value={supplier}>
+                  {supplier}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Murti Design
+            </label>
+            <select
+              name="murti_design"
+              value={formData.murti_design}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 bg-white"
+            >
+              <option value="" disabled>
+                Select Murti Design
+              </option>
+              {MURTI_DESIGN_OPTIONS.map((design) => (
+                <option key={design} value={design}>
+                  {design}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

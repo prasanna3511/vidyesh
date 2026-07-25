@@ -1,12 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import nhost from '../nhost';
 import { generateBookingPdf } from '../utils/bookingPdf';
 
 export default function BappaDetailsModal({ bappa, onClose }) {
   const [imageurl, setImageUrl] = useState('');
-  const [paymentSc, setPaymentSc] = useState('');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   console.log("oooooooo : ", bappa)
 
@@ -21,42 +18,8 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
   useEffect(() => {
     const publicUrl = nhost.storage.getPublicUrl({ fileId: bappa?.images[0]?.image_id });
-    const paymentPublicUrl = nhost.storage.getPublicUrl({ fileId: bappa?.paid_amount_sc });
     setImageUrl(publicUrl);
-    setPaymentSc(paymentPublicUrl);
   }, [bappa]);
-
-  const PaymentScreenshotModal = () => (
-    <div className="fixed inset-0 z-[70] bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl relative overflow-hidden">
-        <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-white">Payment Screenshot</h3>
-            <button
-              onClick={() => setShowPaymentModal(false)}
-              className="text-white hover:text-gray-200 text-2xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-        <div className="p-4">
-          <div className="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300">
-            <img
-              src={paymentSc}
-              alt="Payment Screenshot"
-              className="w-full h-auto max-h-96 object-contain mx-auto rounded-lg shadow-md"
-            />
-          </div>
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">
-              Advance payment of <span className="font-semibold text-green-600">₹{bappa.paid_amount}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <>
@@ -116,6 +79,10 @@ export default function BappaDetailsModal({ bappa, onClose }) {
                   <span className="text-lg font-semibold text-green-600">₹{bappa.paid_amount}</span>
                 </div>
               </div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-600">Payment Mode</span>
+                <span className="text-sm font-semibold text-indigo-700">{bappa.payment_mode || 'Online'}</span>
+              </div>
               <hr className="my-2 border-gray-300" />
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-600">Remaining</span>
@@ -124,29 +91,6 @@ export default function BappaDetailsModal({ bappa, onClose }) {
                 </span>
               </div>
             </div>
-
-            {/* Payment Status Card */}
-            {paymentSc && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 text-lg">✓</span>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-green-800">Payment Verified</h4>
-                      <p className="text-sm text-green-600">Screenshot available</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowPaymentModal(true)}
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-                  >
-                    View Receipt
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Customer Details */}
             <div className="space-y-3">
@@ -185,6 +129,11 @@ export default function BappaDetailsModal({ bappa, onClose }) {
                   </div>
                 </div>
 
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Address</p>
+                  <p className="font-semibold text-gray-900 whitespace-pre-line">{bappa?.address || "—"}</p>
+                </div>
+
               </div>
             </div>
           </div>
@@ -192,8 +141,6 @@ export default function BappaDetailsModal({ bappa, onClose }) {
         </div>
       </div>
 
-      {/* Payment Screenshot Modal */}
-      {showPaymentModal && <PaymentScreenshotModal />}
     </>
   );
 }
