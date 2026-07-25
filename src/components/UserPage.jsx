@@ -65,8 +65,6 @@ const UserPage = ({ onBookBappa }) => {
 
   const handleBookingComplete = async (bookingDetails) => {
     onBookBappa(selectedBappa.id, bookingDetails);
-    setShowPaymentModal(false);
-    setSelectedBappa(null);
     await refetch();
   };
 

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, List, Calendar, User, Phone, Mail, IndianRupee, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Pencil, X, MessageSquareText } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
-import { useAuthenticated } from '@nhost/react';
+import { useAuthenticated, useUserDisplayName } from '@nhost/react';
 import LoginModal from './LoginModal';
 import { gql, useQuery } from '@apollo/client';
 import { useMutation } from '@apollo/client';
@@ -27,6 +27,13 @@ const MURTI_DESIGN_OPTIONS = [
   'Phillips',
   'Chaurang',
   'Furniture',
+];
+const BOOKING_SUGGESTION_OPTIONS = [
+  'गणोबा',
+  'जानवे काढणे',
+  "हातावर 'श्री' काढणे",
+  'कलर टचअप',
+  'घरपोच सेवा (शुल्क लागू)',
 ];
 
 const DELETE_BAPPA = gql`
@@ -82,6 +89,9 @@ mutation UpdateBappa(
   $discount_price: numeric,
   $paid_amount: numeric,
   $address: String,
+  $customer_name: String,
+  $customer_phone: numeric,
+  $suggestions: String,
   $booking_status: String!,
   $date: date!,
   $Supplier: String!,
@@ -95,6 +105,9 @@ mutation UpdateBappa(
       discount_price: $discount_price,
       paid_amount: $paid_amount,
       address: $address,
+      customer_name: $customer_name,
+      customer_phone: $customer_phone,
+      suggestions: $suggestions,
       booking_status: $booking_status,
       date: $date,
       Supplier: $Supplier,
@@ -279,6 +292,61 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
           </div>
         )}
 
+        {(values.booking_status === 'booked' || values.booking_status === 'delivered') && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Customer Name</label>
+            <input
+              type="text"
+              className="w-full rounded-xl border px-4 py-3 text-gray-800"
+              value={values.customer_name || ''}
+              onChange={(e) => onChange('customer_name', e.target.value)}
+              placeholder="Enter customer name"
+            />
+          </div>
+        )}
+
+        {(values.booking_status === 'booked' || values.booking_status === 'delivered') && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Mobile Number</label>
+            <input
+              type="text"
+              className="w-full rounded-xl border px-4 py-3 text-gray-800"
+              value={values.customer_phone || ''}
+              onChange={(e) => onChange('customer_phone', e.target.value)}
+              placeholder="Enter mobile number"
+            />
+          </div>
+        )}
+
+        {(values.booking_status === 'booked' || values.booking_status === 'delivered') && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Suggestions</label>
+            <div className="space-y-2 rounded-xl border px-4 py-3">
+              {BOOKING_SUGGESTION_OPTIONS.map((option) => {
+                const selectedSuggestions = values.suggestions || [];
+                const isChecked = selectedSuggestions.includes(option);
+
+                return (
+                  <label key={option} className="flex items-center gap-2 text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {
+                        const nextSuggestions = isChecked
+                          ? selectedSuggestions.filter((item) => item !== option)
+                          : [...selectedSuggestions, option];
+                        onChange('suggestions', nextSuggestions);
+                      }}
+                      className="form-checkbox"
+                    />
+                    <span className="text-sm">{option}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
           <select
@@ -330,7 +398,7 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
           </select>
         </div>
 
-        {values.booking_status === 'booked' && (
+        {(values.booking_status === 'booked' || values.booking_status === 'delivered') && (
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Address</label>
             <textarea
@@ -601,6 +669,7 @@ const AdminPage = ({ onAddBappa }) => {
   const [sizeFilter, setSizeFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
   const [designFilter, setDesignFilter] = useState("");
+  const [bookedSuggestionFilter, setBookedSuggestionFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [pendingApprovalBappa, setPendingApprovalBappa] = useState(null);
   const [roundUpBappa, setRoundUpBappa] = useState(null);
@@ -709,6 +778,12 @@ const AdminPage = ({ onAddBappa }) => {
       discount_price: bappa.discount_price || "",
       paid_amount: bappa.paid_amount ?? "",
       address: bappa.address || "",
+      customer_name: bappa.fullName || "",
+      customer_phone: bappa.phoneNumber || "",
+      suggestions: String(bappa.suggestions || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
       booking_status: bappa.booking_status || "available",
       supplier: bappa.supplier || "",
       murti_design: bappa.murti_design || "",
@@ -741,6 +816,10 @@ const AdminPage = ({ onAddBappa }) => {
         editedValues.paid_amount === "" || editedValues.paid_amount === null || editedValues.paid_amount === undefined
           ? null
           : Number(editedValues.paid_amount);
+      const customerPhone =
+        editedValues.customer_phone === "" || editedValues.customer_phone === null || editedValues.customer_phone === undefined
+          ? null
+          : Number(editedValues.customer_phone);
       await updateBappa({
         variables: {
           id,
@@ -749,6 +828,18 @@ const AdminPage = ({ onAddBappa }) => {
           discount_price: discountPrice,
           paid_amount: paidAmount,
           address: editedValues.booking_status === 'booked' ? (editedValues.address?.trim() || null) : null,
+          customer_name:
+            editedValues.booking_status === 'booked' || editedValues.booking_status === 'delivered'
+              ? (editedValues.customer_name?.trim() || null)
+              : null,
+          customer_phone:
+            editedValues.booking_status === 'booked' || editedValues.booking_status === 'delivered'
+              ? customerPhone
+              : null,
+          suggestions:
+            editedValues.booking_status === 'booked' || editedValues.booking_status === 'delivered'
+              ? (editedValues.suggestions || []).join(', ')
+              : null,
           booking_status: editedValues.booking_status,
           date: getCurrentDbDate(),
           Supplier: editedValues.supplier,
@@ -870,6 +961,9 @@ const AdminPage = ({ onAddBappa }) => {
         `Size: ${bappa.size || '-'}`,
       ].filter(Boolean).join('\n'),
       pdfLink ? `PDF Link: ${pdfLink}` : 'PDF link could not be generated automatically.',
+      '– *Vidyesh Ganeshmurti*',
+      `Message Sent By :- ${userDisplayName || bappa.booked_by || 'Admin'}`,
+      'This is an automated message.',
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -882,6 +976,7 @@ const AdminPage = ({ onAddBappa }) => {
   };
 
   const isAuthenticated = useAuthenticated();
+  const userDisplayName = useUserDisplayName();
   const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated);
 
   useEffect(() => {
@@ -973,6 +1068,18 @@ const AdminPage = ({ onAddBappa }) => {
       .filter(Boolean)
   )].sort((a, b) => Number(b) - Number(a));
 
+  const availableBookedSuggestions = [...new Set(
+    bappas
+      .filter((b) => b.booking_status === "booked" || b.booking_status === "delivered")
+      .flatMap((b) =>
+        String(b.suggestions || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+      .concat(BOOKING_SUGGESTION_OPTIONS)
+  )];
+
   const matchesYearFilter = (bappa) => {
     if (!yearFilter) return true;
     if (bappa.booking_status !== "booked" && bappa.booking_status !== "delivered") return true;
@@ -1002,8 +1109,18 @@ const AdminPage = ({ onAddBappa }) => {
             (b.size || "").toLowerCase().includes(searchText.toLowerCase())
       );
   };
+
+  const matchesBookedSuggestionFilter = (bappa) => {
+    if (!bookedSuggestionFilter) return true;
+    return String(bappa.suggestions || '')
+      .split(',')
+      .map((item) => item.trim())
+      .includes(bookedSuggestionFilter);
+  };
     
-  const bookedBappas = applyFilters(bappas.filter((b) => b.booking_status === "booked" || b.booking_status === "delivered"));
+  const bookedBappas = applyFilters(
+    bappas.filter((b) => b.booking_status === "booked" || b.booking_status === "delivered")
+  ).filter(matchesBookedSuggestionFilter);
   const availableBappas = applyFilters(bappas.filter((b) => b.booking_status !== "booked" && b.booking_status !== "pending"));
   const pendingBappas = applyFilters(bappas.filter((b) => b.booking_status === "pending")); // Added for clarity
   const allFilteredBappas = applyFilters(bappas); // This is the array you need for "All Murti" section
@@ -1181,18 +1298,32 @@ const AdminPage = ({ onAddBappa }) => {
             <Calendar className="h-6 w-6 text-green-500" />
             <span>Booked Murti</span>
           </h3>
-          <button
-            type="button"
-            onClick={() => setShowBookedMurtiDetails((prev) => !prev)}
-            className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
-            <span>{showBookedMurtiDetails ? 'Hide Details' : 'Show Details'}</span>
-            {showBookedMurtiDetails ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
+          <div className="flex flex-col gap-3 self-start md:flex-row md:items-center">
+            <select
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700"
+              value={bookedSuggestionFilter}
+              onChange={(e) => setBookedSuggestionFilter(e.target.value)}
+            >
+              <option value="">All Suggestions</option>
+              {availableBookedSuggestions.map((suggestion) => (
+                <option key={suggestion} value={suggestion}>
+                  {suggestion}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowBookedMurtiDetails((prev) => !prev)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            >
+              <span>{showBookedMurtiDetails ? 'Hide Details' : 'Show Details'}</span>
+              {showBookedMurtiDetails ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {showBookedMurtiDetails && (

@@ -187,7 +187,7 @@ const Contact = () => {
             गणपती बाप्पा मोरया! मंगलमूर्ती मोरया!
           </p>
           <p className="text-orange-300/60 text-sm mt-2">
-            © Vidyesh Ganeshmurti 2025, All rights reserved.
+            © Vidyesh Ganeshmurti 2026, All rights reserved.
           </p>
         </div>
       </div>
