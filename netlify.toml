@@ -1,0 +1,23 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Netlify applies the FIRST matching rule, so the storage proxy must stay above
+# the SPA fallback below — otherwise these URLs would return index.html.
+#
+# Serving Nhost storage from our own origin removes CORS from image reads. Nhost
+# sits behind Cloudflare and only sends access-control-allow-origin when the
+# request has an Origin header, yet caches the response without Vary: Origin, so
+# direct cross-origin reads fail whenever the cached copy came from a plain <img>
+# load. Mirrored by the dev-server proxy in vite.config.ts.
+[[redirects]]
+  from = "/nhost-storage/*"
+  to = "https://oxsetgbfcrtlfjmvwkmk.storage.ap-south-1.nhost.run/v1/:splat"
+  status = 200
+  force = true
+
+# Single-page app: unknown routes fall back to index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

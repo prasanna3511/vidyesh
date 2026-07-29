@@ -7,12 +7,13 @@ import LoginModal from './LoginModal';
 import { gql, useQuery } from '@apollo/client';
 import { useMutation } from '@apollo/client';
 import BappaDetailsModal from '../components/BappaDetails';
-import nhost from '../nhost';
+import nhost, { getSafeStorageUrl } from '../nhost';
 import ApproveBappaModal from './ApproveBappaModal';
 import RoundUpModal from './RoundupModal'; // Adjust path if needed
 import { generateBookingPdf } from '../utils/bookingPdf';
+import { getFirstImageFileId, loadPdfImageDataUrl } from '../utils/imageData';
 
-const SUPPLIER_OPTIONS = ['P.B', 'S.H', 'N.P', 'M.H', 'A.M', 'D.P'];
+const SUPPLIER_OPTIONS = ['P.B', 'S.H', 'N.P', 'M.H', 'A.M', 'D.P', 'R.S', 'V.W'];
 const MURTI_DESIGN_OPTIONS = [
   'Dagdusheth',
   'Bal Ganesh',
@@ -27,6 +28,11 @@ const MURTI_DESIGN_OPTIONS = [
   'Phillips',
   'Chaurang',
   'Furniture',
+  "Feta",
+  "Single Load",
+  "Double Load",
+  "Veling",
+  "Lalbaug"
 ];
 const BOOKING_SUGGESTION_OPTIONS = [
   'गणोबा',
@@ -921,12 +927,12 @@ const AdminPage = ({ onAddBappa }) => {
 
     const selectedTemplate =
       advertisementMessages.find((item) => item.id === selectedMessageId) || advertisementMessages[0] || null;
+    const imageFileId = getFirstImageFileId(bappa);
+    const imageDataUrl = await loadPdfImageDataUrl({ fileId: imageFileId, url: bappa.image });
     const pdfBappa = {
       ...bappa,
-      imageUrl:
-        bappa.images?.length > 0
-          ? nhost.storage.getPublicUrl({ fileId: bappa.images[0].image_id })
-          : bappa.image,
+      imageUrl: imageFileId ? getSafeStorageUrl(imageFileId) : bappa.image,
+      imageDataUrl,
     };
 
     let pdfLink = '';

@@ -1,5 +1,5 @@
 import React from 'react'
-import advertise from '../assets/advertise.jpeg'
+import advertise from '../assets/1000373663.png'
 
 export default function Advertisement({ onClose }) {
   return (

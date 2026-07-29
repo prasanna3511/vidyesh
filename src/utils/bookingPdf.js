@@ -5,6 +5,14 @@ const MM_TO_PX = 3.7795275591;
 const DEVANAGARI_REGEX = /[\u0900-\u097F]/;
 const PDF_EXCLUDED_SUGGESTIONS = new Set(['कलर टचअप']);
 
+// JPEG has no alpha channel, so a transparent source would render black.
+const fillWhite = (canvas) => {
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return ctx;
+};
+
 const loadImageFromElement = (source) =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -14,7 +22,7 @@ const loadImageFromElement = (source) =>
       const canvas = document.createElement('canvas');
       canvas.width = image.naturalWidth || image.width;
       canvas.height = image.naturalHeight || image.height;
-      canvas.getContext('2d').drawImage(image, 0, 0);
+      fillWhite(canvas).drawImage(image, 0, 0);
 
       resolve({
         dataUrl: canvas.toDataURL('image/jpeg', 0.95),
@@ -33,8 +41,16 @@ const loadImage = async (url) => {
   }
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    if (!res.ok) {
+      throw new Error(`Image fetch failed with status ${res.status}`);
+    }
+
     const blob = await res.blob();
+    // A missing route on a static host answers with index.html and status 200.
+    if (!blob.type.startsWith('image/')) {
+      throw new Error(`Expected an image but received "${blob.type || 'unknown'}"`);
+    }
 
     try {
       let bitmap;
@@ -47,7 +63,7 @@ const loadImage = async (url) => {
       const canvas = document.createElement('canvas');
       canvas.width = bitmap.width;
       canvas.height = bitmap.height;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+      fillWhite(canvas).drawImage(bitmap, 0, 0);
 
       return {
         dataUrl: canvas.toDataURL('image/jpeg', 0.95),
@@ -66,6 +82,19 @@ const loadImage = async (url) => {
   } catch (fetchError) {
     return loadImageFromElement(url);
   }
+};
+
+const imageElementToData = (imageElement) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = imageElement.naturalWidth || imageElement.width;
+  canvas.height = imageElement.naturalHeight || imageElement.height;
+  fillWhite(canvas).drawImage(imageElement, 0, 0);
+
+  return {
+    dataUrl: canvas.toDataURL('image/jpeg', 0.95),
+    width: canvas.width,
+    height: canvas.height,
+  };
 };
 
 const wrapCanvasText = (ctx, text, maxWidth) => {
@@ -270,9 +299,11 @@ export async function generateBookingPdf(bappa, options = {}) {
   const imageCardHeight = 52;
   drawCard(margin, topY, imageCardWidth, imageCardHeight, { r: 255, g: 255, b: 255 });
 
-  if (bappa.imageDataUrl || bappa.imageUrl || bappa.image) {
+  if (bappa.imageElement || bappa.imageDataUrl || bappa.imageUrl || bappa.image) {
     try {
-      const { dataUrl, width, height } = await loadImage(bappa.imageDataUrl || bappa.imageUrl || bappa.image);
+      const { dataUrl, width, height } = bappa.imageElement
+        ? imageElementToData(bappa.imageElement)
+        : await loadImage(bappa.imageDataUrl || bappa.imageUrl || bappa.image);
       const innerWidth = imageCardWidth - 8;
       const innerHeight = imageCardHeight - 8;
       const scale = Math.min(innerWidth / width, innerHeight / height);

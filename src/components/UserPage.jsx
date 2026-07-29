@@ -20,6 +20,11 @@ const MURTI_DESIGN_OPTIONS = [
   "Phillips",
   "Chaurang",
   "Furniture",
+  "Feta",
+  "Single Load",
+  "Double Load",
+  "Veling",
+  "Lalbaug"
 ];
 
 const GET_MURTI_HISTORY = gql`

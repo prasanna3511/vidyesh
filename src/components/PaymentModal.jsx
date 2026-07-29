@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { X, User, Phone, Mail, Coins, IndianRupee } from 'lucide-react';
 import { gql, useMutation } from '@apollo/client';
 import { useAuthenticated, useUserDisplayName, useUserEmail } from '@nhost/react';
-import nhost from '../nhost';
+import nhost, { getSafeStorageUrl } from '../nhost';
 import { generateBookingPdf } from '../utils/bookingPdf';
+import { getFirstImageFileId, loadPdfImageDataUrl } from '../utils/imageData';
 
 const getCurrentDbDate = () => new Date().toISOString().split('T')[0];
 
@@ -147,6 +148,9 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
       const whatsappNumber =
         digits.length === 10 ? `91${digits}` : digits.length === 12 && digits.startsWith('91') ? digits : digits;
 
+      const imageFileId = getFirstImageFileId(bappa);
+      const imageDataUrl = await loadPdfImageDataUrl({ fileId: imageFileId, url: bappa.image });
+
       const pdfBappa = {
         ...bappa,
         name: bappa.murti_id || bappa.name,
@@ -160,7 +164,8 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
         address: savedBookingDetails.address,
         suggestions: savedBookingDetails.suggestions?.join(', '),
         booked_by: authenticatedUserEmail,
-        imageUrl: bappa.image,
+        imageUrl: imageFileId ? getSafeStorageUrl(imageFileId) : bappa.image,
+        imageDataUrl,
       };
 
       let pdfLink = '';

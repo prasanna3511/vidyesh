@@ -3,7 +3,7 @@ import { X, Upload, Crown, Ruler, IndianRupee, Camera } from "lucide-react";
 import { gql, useMutation } from '@apollo/client';
 import  nhost from '../nhost';
 
-const SUPPLIER_OPTIONS = ["P.B", "S.H", "N.P", "M.H", "A.M", "D.P"];
+const SUPPLIER_OPTIONS = ["P.B", "S.H", "N.P", "M.H", "A.M", "D.P","R.S", "V.W"];
 const MURTI_DESIGN_OPTIONS = [
   "Dagdusheth",
   "Bal Ganesh",
@@ -18,6 +18,11 @@ const MURTI_DESIGN_OPTIONS = [
   "Phillips",
   "Chaurang",
   "Furniture",
+  "Feta",
+  "Single Load",
+  "Double Load",
+  "Veling",
+  "Lalbaug"
 ];
 
 const INSERT_MURTI = gql`
@@ -107,16 +112,13 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
   };
 
   const normalizeImageFile = async (file) => {
-    if (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp") {
-      return file;
-    }
-
     const dataUrl = await readFileAsDataUrl(file);
     const image = await loadImageElement(dataUrl);
     const canvas = document.createElement("canvas");
     canvas.width = image.naturalWidth || image.width;
     canvas.height = image.naturalHeight || image.height;
-    canvas.getContext("2d").drawImage(image, 0, 0);
+    const context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0);
 
     const normalizedBlob = await new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
@@ -210,7 +212,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
           final_price: formData.price,
           size: formData.size,
           booking_status: "available",
-          image:" ",
+          image: mainImageUrl || " ",
           Supplier: formData.supplier,
           murti_design: formData.murti_design,
         },
