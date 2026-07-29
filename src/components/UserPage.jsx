@@ -51,6 +51,7 @@ const GET_MURTI_HISTORY = gql`
 `;
 
 const UserPage = ({ onBookBappa }) => {
+  const ITEMS_PER_PAGE = 9;
   const isAuthenticated = useAuthenticated();
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -58,6 +59,7 @@ const UserPage = ({ onBookBappa }) => {
   const [designFilter, setDesignFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [showSplash, setShowSplash] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
 
   const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
@@ -77,6 +79,43 @@ const UserPage = ({ onBookBappa }) => {
     const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => clearTimeout(timer);
   }, []);
+
+  const bappas = (data?.murti_history || []).filter(
+    (bappa) => bappa.booking_status === "available"
+  );
+
+  const filteredBappas = bappas
+    .filter((bappa) => !sizeFilter || bappa.size === sizeFilter)
+    .filter((bappa) => !designFilter || bappa.murti_design === designFilter)
+    .filter((bappa) =>
+      searchText.trim() === ""
+        ? true
+        : (bappa.murti_id || "")
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          (bappa.customer_email || "")
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          (bappa.size || "")
+            .toLowerCase()
+            .includes(searchText.toLowerCase())
+    );
+
+  const totalPages = Math.max(1, Math.ceil(filteredBappas.length / ITEMS_PER_PAGE));
+  const paginatedBappas = filteredBappas.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sizeFilter, designFilter, searchText]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   if (loading) {
     return (
@@ -107,27 +146,6 @@ const UserPage = ({ onBookBappa }) => {
     );
   }
 
-  const bappas = (data?.murti_history || []).filter(
-    (bappa) => bappa.booking_status === "available"
-  );
-
-// First apply size filter, then search filter
-const filteredBappas = bappas
-  .filter((bappa) => !sizeFilter || bappa.size === sizeFilter)
-  .filter((bappa) => !designFilter || bappa.murti_design === designFilter)
-  .filter((bappa) =>
-    searchText.trim() === ""
-      ? true
-      : (bappa.murti_id || "")
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        (bappa.customer_email || "")
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        (bappa.size || "")
-          .toLowerCase()
-          .includes(searchText.toLowerCase())
-  );
   return (
     <div
       className="min-h-screen bg-cover bg-center bg-no-repeat"
@@ -204,7 +222,7 @@ const filteredBappas = bappas
             {/* {bappas.filter((bappa) => !sizeFilter || bappa.size === sizeFilter).map((bappa) => (
               <BappaCard key={bappa.id} bappa={bappa} onBuyNow={handleBuyNow} />
             ))} */}
-            {filteredBappas.map((bappa) => (
+            {paginatedBappas.map((bappa) => (
   <BappaCard key={bappa.id} bappa={bappa} onBuyNow={handleBuyNow} />
 ))}
           </div>
@@ -212,6 +230,36 @@ const filteredBappas = bappas
           {filteredBappas.length === 0 && (
             <div className="text-center py-16">
               <p className="text-xl text-gray-300">No Bappas available at the moment</p>
+            </div>
+          )}
+
+          {filteredBappas.length > 0 && totalPages > 1 && (
+            <div className="mt-10 flex flex-col items-center gap-4">
+              <p className="text-sm text-gray-300">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredBappas.length)} of {filteredBappas.length} murtis
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg bg-white px-4 py-2 text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-white font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-lg bg-white px-4 py-2 text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
   

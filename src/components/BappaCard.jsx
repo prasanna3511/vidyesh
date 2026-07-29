@@ -339,6 +339,8 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
         src={imageUrls[currentImageIndex] || dedaultimage}
         alt={altText}
         className="w-full h-full rounded-lg object-contain"
+        loading="lazy"
+        decoding="async"
         onError={(e) => {
           e.target.src = dedaultimage;
         }}
