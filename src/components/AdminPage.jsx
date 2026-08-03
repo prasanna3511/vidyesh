@@ -662,9 +662,12 @@ const ImageSlider = ({ images, defaultImage, altText, className }) => {
 };
 
 const AdminPage = ({ onAddBappa }) => {
+  const MAX_AUTO_RETRIES = 6;
+  const RETRY_DELAY_MS = 5000;
   const [showAddModal, setShowAddModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [approveBappa] = useMutation(APPROVE_BAPPA);
   const [deleteBappa] = useMutation(DELETE_BAPPA);
   const [editingId, setEditingId] = useState(null);
@@ -720,6 +723,27 @@ const AdminPage = ({ onAddBappa }) => {
       setIsLoadingMessages(false);
     }
   };
+
+  useEffect(() => {
+    if (!error) {
+      setRetryAttempt(0);
+      return;
+    }
+
+    if (retryAttempt >= MAX_AUTO_RETRIES) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        await refetch();
+      } finally {
+        setRetryAttempt((prev) => prev + 1);
+      }
+    }, RETRY_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [error, refetch, retryAttempt]);
 
   // Function to fetch images for a specific murti
   const fetchMurtiImages = async (murtiId) => {
@@ -1019,8 +1043,21 @@ const AdminPage = ({ onAddBappa }) => {
 
   if (error) {
     return (
-      <div className="px-4 py-8 text-center text-red-200">
-        Failed to load admin data: {error.message}
+      <div className="space-y-4 px-4 py-8 text-center text-red-200">
+        <p>Failed to load admin data: {error.message}</p>
+        <p className="text-sm text-white">
+          Retrying automatically {retryAttempt < MAX_AUTO_RETRIES ? `(${retryAttempt + 1}/${MAX_AUTO_RETRIES})` : "stopped"}.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setRetryAttempt(0);
+            refetch();
+          }}
+          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-800"
+        >
+          Retry now
+        </button>
       </div>
     );
   }

@@ -52,6 +52,8 @@ const GET_MURTI_HISTORY = gql`
 
 const UserPage = ({ onBookBappa }) => {
   const ITEMS_PER_PAGE = 9;
+  const MAX_AUTO_RETRIES = 6;
+  const RETRY_DELAY_MS = 5000;
   const isAuthenticated = useAuthenticated();
   const [selectedBappa, setSelectedBappa] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -60,6 +62,7 @@ const UserPage = ({ onBookBappa }) => {
   const [searchText, setSearchText] = useState("");
   const [showSplash, setShowSplash] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
 
   const { loading, error, data, refetch } = useQuery(GET_MURTI_HISTORY);
@@ -79,6 +82,27 @@ const UserPage = ({ onBookBappa }) => {
     const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!error) {
+      setRetryAttempt(0);
+      return;
+    }
+
+    if (retryAttempt >= MAX_AUTO_RETRIES) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        await refetch();
+      } finally {
+        setRetryAttempt((prev) => prev + 1);
+      }
+    }, RETRY_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [error, refetch, retryAttempt]);
 
   const bappas = (data?.murti_history || []).filter(
     (bappa) => bappa.booking_status === "available"
@@ -140,8 +164,21 @@ const UserPage = ({ onBookBappa }) => {
 
   if (error) {
     return (
-      <div className="text-center py-16 text-lg text-red-600">
-        Error loading data: {error.message}
+      <div className="text-center py-16 text-lg text-red-600 space-y-4">
+        <p>Error loading data: {error.message}</p>
+        <p className="text-sm text-gray-200">
+          Retrying automatically {retryAttempt < MAX_AUTO_RETRIES ? `(${retryAttempt + 1}/${MAX_AUTO_RETRIES})` : "stopped"}.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setRetryAttempt(0);
+            refetch();
+          }}
+          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-800"
+        >
+          Retry now
+        </button>
       </div>
     );
   }
@@ -154,60 +191,96 @@ const UserPage = ({ onBookBappa }) => {
       <div className="min-h-screen bg-black/60">
         <div className="container mx-auto px-4 py-8 text-white">
           <div className="text-center mb-12">
-            <div className="flex flex-col md:flex-row justify-center gap-6 mb-10 items-center">
-  {/* Size Filter */}
-  <div className="w-64">
-    <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
-      Filter by Size
-    </label>
-    <select
-      name="size"
-      value={sizeFilter}
-      onChange={(e) => setSizeFilter(e.target.value)}
-      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"
-    >
-      <option value="">All Sizes</option>
-      {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
-        <option key={value} value={`${value} inches`}>
-          {value} inches
-        </option>
-      ))}
-    </select>
-  </div>
+            <div className="mx-auto mb-8 max-w-3xl rounded-3xl border border-white/15 bg-black/45 px-4 py-5 text-center shadow-2xl backdrop-blur-sm md:px-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-orange-300">
+                Online Ganesh Murti Booking
+              </p>
+              <h2 className="mt-3 text-2xl font-bold text-white md:text-3xl">
+                Simple booking in a few quick steps
+              </h2>
+              <div className="mt-4 space-y-2 text-sm leading-6 text-gray-200 md:text-base">
+                <p>
+                  <span className="font-semibold text-white">Step 1:</span> Visit{" "}
+                  <a
+                    href="https://vidyeshganeshmurti.netlify.app/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-orange-300 underline underline-offset-4"
+                  >
+                    vidyeshganeshmurti.netlify.app
+                  </a>
+                  .
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Step 2:</span> Select your preferred size.
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Step 3:</span> Choose your favourite Murti.
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Step 4:</span> Send the Murti No. or screenshot on WhatsApp.
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Step 5:</span> Pay the booking advance via any UPI app.
+                </p>
+              </div>
+              <p className="mt-3 text-sm font-semibold text-emerald-300 md:text-base">
+                Booking is confirmed after advance payment.
+              </p>
+            </div>
 
-  <div className="w-64">
-    <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
-      Filter by Design
-    </label>
-    <select
-      name="design"
-      value={designFilter}
-      onChange={(e) => setDesignFilter(e.target.value)}
-      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"
-    >
-      <option value="">All Designs</option>
-      {MURTI_DESIGN_OPTIONS.map((design) => (
-        <option key={design} value={design}>
-          {design}
-        </option>
-      ))}
-    </select>
-  </div>
+            <div className="mx-auto mb-10 grid max-w-5xl grid-cols-3 gap-2 items-end md:gap-4">
+              <div className="min-w-0">
+                <label className="mb-2 block text-center text-[11px] font-medium uppercase tracking-wide text-gray-200 md:text-sm">
+                  Size
+                </label>
+                <select
+                  name="size"
+                  value={sizeFilter}
+                  onChange={(e) => setSizeFilter(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-2 py-2 text-xs text-gray-800 transition-all duration-300 focus:border-transparent focus:ring-2 focus:ring-orange-500 md:px-4 md:py-3 md:text-base"
+                >
+                  <option value="">All Sizes</option>
+                  {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
+                    <option key={value} value={`${value} inches`}>
+                      {value} inches
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-  {/* Search Bar */}
-  <div className="w-64">
-    <label className="block text-sm font-medium text-gray-200 mb-2 text-center">
-      Search Murti
-    </label>
-    <input
-      type="text"
-      placeholder="Search by murti number,size....."
-      value={searchText}
-      onChange={(e) => setSearchText(e.target.value)}
-      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300 bg-white text-gray-800"
-    />
-  </div>
-  </div>
+              <div className="min-w-0">
+                <label className="mb-2 block text-center text-[11px] font-medium uppercase tracking-wide text-gray-200 md:text-sm">
+                  Design
+                </label>
+                <select
+                  name="design"
+                  value={designFilter}
+                  onChange={(e) => setDesignFilter(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-2 py-2 text-xs text-gray-800 transition-all duration-300 focus:border-transparent focus:ring-2 focus:ring-orange-500 md:px-4 md:py-3 md:text-base"
+                >
+                  <option value="">All Designs</option>
+                  {MURTI_DESIGN_OPTIONS.map((design) => (
+                    <option key={design} value={design}>
+                      {design}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="min-w-0">
+                <label className="mb-2 block text-center text-[11px] font-medium uppercase tracking-wide text-gray-200 md:text-sm">
+                  Search
+                </label>
+                <input
+                  type="text"
+                  placeholder="Murti no."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-2 py-2 text-xs text-gray-800 transition-all duration-300 placeholder:text-gray-400 focus:border-transparent focus:ring-2 focus:ring-orange-500 md:px-4 md:py-3 md:text-base"
+                />
+              </div>
+            </div>
             {/* <h2 className="text-3xl md:text-5xl font-bold mb-3 leading-snug md:leading-tight text-orange-400">
               जय गणेश श्री गणेश
             </h2> */}
