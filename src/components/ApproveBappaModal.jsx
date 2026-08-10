@@ -60,6 +60,7 @@ const ApproveBappaModal = ({ bappa, onApprove, onClose }) => {
     <div className="flex items-center gap-3">
       <input
         type="number"
+        inputMode="decimal"
         value={discountedAmount}
         min="0"
         onChange={(e) => setDiscountedAmount(e.target.value)}

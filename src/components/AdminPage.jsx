@@ -12,6 +12,7 @@ import ApproveBappaModal from './ApproveBappaModal';
 import RoundUpModal from './RoundupModal'; // Adjust path if needed
 import { generateBookingPdf } from '../utils/bookingPdf';
 import { getFirstImageFileId, loadPdfImageDataUrl } from '../utils/imageData';
+import { MURTI_STORED_AT_OPTIONS } from '../constants/murtiOptions';
 
 const SUPPLIER_OPTIONS = ['P.B', 'S.H', 'N.P', 'M.H', 'A.M', 'D.P', 'R.S', 'V.W'];
 const MURTI_DESIGN_OPTIONS = [
@@ -101,7 +102,9 @@ mutation UpdateBappa(
   $booking_status: String!,
   $date: date!,
   $Supplier: String!,
-  $murti_design: String!
+  $murti_design: String!,
+  $stored_at: String,
+  $payment_mode: String
 ) {
   update_murti_history(
     where: { id: { _eq: $id } },
@@ -117,7 +120,9 @@ mutation UpdateBappa(
       booking_status: $booking_status,
       date: $date,
       Supplier: $Supplier,
-      murti_design: $murti_design
+      murti_design: $murti_design,
+      stored_at: $stored_at,
+      payment_mode: $payment_mode
     }
   ) {
     affected_rows
@@ -148,6 +153,7 @@ const GET_MURTI_HISTORY = gql`
       date
       supplier: Supplier
       murti_design
+      stored_at
     }
   }
 `;
@@ -278,6 +284,7 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
           <label className="mb-2 block text-sm font-medium text-gray-700">Discount Price</label>
           <input
             type="text"
+            inputMode="decimal"
             className="w-full rounded-xl border px-4 py-3 text-gray-800"
             value={values.discount_price}
             onChange={(e) => onChange('discount_price', e.target.value)}
@@ -290,11 +297,26 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
             <label className="mb-2 block text-sm font-medium text-gray-700">Paid Amount</label>
             <input
               type="text"
+              inputMode="decimal"
               className="w-full rounded-xl border px-4 py-3 text-gray-800"
               value={values.paid_amount ?? ''}
               onChange={(e) => onChange('paid_amount', e.target.value)}
               placeholder="Enter paid amount"
             />
+          </div>
+        )}
+
+        {(values.booking_status === 'booked' || values.booking_status === 'delivered') && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Advance Payment Method</label>
+            <select
+              className="w-full rounded-xl border px-4 py-3 text-gray-800"
+              value={values.payment_mode || 'Online'}
+              onChange={(e) => onChange('payment_mode', e.target.value)}
+            >
+              <option value="Online">Online</option>
+              <option value="Cash">Cash</option>
+            </select>
           </div>
         )}
 
@@ -315,7 +337,9 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Mobile Number</label>
             <input
-              type="text"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
               className="w-full rounded-xl border px-4 py-3 text-gray-800"
               value={values.customer_phone || ''}
               onChange={(e) => onChange('customer_phone', e.target.value)}
@@ -399,6 +423,22 @@ const EditMurtiModal = ({ values, onChange, onClose, onSave }) => (
             {MURTI_DESIGN_OPTIONS.map((design) => (
               <option key={design} value={design}>
                 {design}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Murti will be stored at</label>
+          <select
+            className="w-full rounded-xl border px-4 py-3 text-gray-800"
+            value={values.stored_at || ''}
+            onChange={(e) => onChange('stored_at', e.target.value)}
+          >
+            <option value="">Select Storage Location</option>
+            {MURTI_STORED_AT_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
               </option>
             ))}
           </select>
@@ -817,6 +857,8 @@ const AdminPage = ({ onAddBappa }) => {
       booking_status: bappa.booking_status || "available",
       supplier: bappa.supplier || "",
       murti_design: bappa.murti_design || "",
+      stored_at: bappa.stored_at || "",
+      payment_mode: bappa.payment_mode || "Online",
     });
   };
 
@@ -874,6 +916,11 @@ const AdminPage = ({ onAddBappa }) => {
           date: getCurrentDbDate(),
           Supplier: editedValues.supplier,
           murti_design: editedValues.murti_design,
+          stored_at: editedValues.stored_at?.trim() || null,
+          payment_mode:
+            editedValues.booking_status === 'booked' || editedValues.booking_status === 'delivered'
+              ? (editedValues.payment_mode || 'Online')
+              : null,
         },
       });
       setEditingId(null);
@@ -1086,6 +1133,7 @@ const AdminPage = ({ onAddBappa }) => {
     date: item.date || null,
     supplier: item.supplier || '',
     murti_design: item.murti_design || '',
+    stored_at: item.stored_at || '',
   }));
 
   const bookings = murtiData
@@ -1278,7 +1326,7 @@ const AdminPage = ({ onAddBappa }) => {
           onChange={(e) => setSizeFilter(e.target.value)}
         >
           <option value="">All Sizes</option>
-          {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
+          {[6, 9, 11, 12, 13, 14, 15, 18,21,24].map((value) => (
             <option key={value} value={`${value} inches`}>
               {value} inches
             </option>

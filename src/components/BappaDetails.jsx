@@ -229,6 +229,16 @@ export default function BappaDetailsModal({ bappa, onClose }) {
                 </div>
               </div>
 
+              <div className="flex items-center space-x-3 rounded-xl bg-gray-50 p-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
+                  <span className="text-sm font-semibold text-purple-600">📍</span>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Stored At</p>
+                  <p className="whitespace-pre-line font-semibold text-gray-900">{bappa?.stored_at || '—'}</p>
+                </div>
+              </div>
+
               <div className="rounded-xl bg-gray-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-gray-500">Address</p>
                 <p className="whitespace-pre-line font-semibold text-gray-900">{bappa?.address || '—'}</p>

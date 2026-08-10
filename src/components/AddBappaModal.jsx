@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { X, Upload, Crown, Ruler, IndianRupee, Camera } from "lucide-react";
 import { gql, useMutation } from '@apollo/client';
 import  nhost from '../nhost';
+import { MURTI_STORED_AT_OPTIONS } from '../constants/murtiOptions';
 
 const SUPPLIER_OPTIONS = ["P.B", "S.H", "N.P", "M.H", "A.M", "D.P","R.S", "V.W"];
 const MURTI_DESIGN_OPTIONS = [
@@ -33,7 +34,8 @@ const INSERT_MURTI = gql`
     $booking_status: String!,
     $image: String!,
     $Supplier: String!,
-    $murti_design: String!
+    $murti_design: String!,
+    $stored_at: String
   ) {
     insert_murti_history(objects: {
       murti_id: $murti_id,
@@ -42,7 +44,8 @@ const INSERT_MURTI = gql`
       booking_status: $booking_status,
       image: $image,
       Supplier: $Supplier,
-      murti_design: $murti_design
+      murti_design: $murti_design,
+      stored_at: $stored_at
     }) {
       returning {
         id
@@ -74,6 +77,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
     price: "",
     supplier: "",
     murti_design: "",
+    stored_at: "",
     images: [], // array of base64 previews
     imageFiles: [], // actual File objects
   });
@@ -215,6 +219,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
           image: mainImageUrl || " ",
           Supplier: formData.supplier,
           murti_design: formData.murti_design,
+          stored_at: formData.stored_at || null,
         },
       });
   
@@ -238,6 +243,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
         image: mainImageUrl,
         supplier: formData.supplier,
         murti_design: formData.murti_design,
+        stored_at: formData.stored_at,
       });
   
       onClose();
@@ -295,7 +301,7 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
               <option value="" disabled>
                 Select Size
               </option>
-              {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
+              {[6, 9, 11, 12, 13, 14, 15, 18,21,24].map((value) => (
                 <option key={value} value={`${value} inches`}>
                   {value} inches
                 </option>
@@ -357,6 +363,25 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
               {MURTI_DESIGN_OPTIONS.map((design) => (
                 <option key={design} value={design}>
                   {design}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Murti will be stored at
+            </label>
+            <select
+              name="stored_at"
+              value={formData.stored_at}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 bg-white"
+            >
+              <option value="">Select Storage Location</option>
+              {MURTI_STORED_AT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
                 </option>
               ))}
             </select>

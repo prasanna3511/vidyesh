@@ -46,6 +46,7 @@ const GET_MURTI_HISTORY = gql`
       murti_design
       suggestions
       booked_by
+      stored_at
     }
   }
 `;
@@ -241,7 +242,7 @@ const UserPage = ({ onBookBappa }) => {
                   className="w-full rounded-xl border border-gray-300 bg-white px-2 py-2 text-xs text-gray-800 transition-all duration-300 focus:border-transparent focus:ring-2 focus:ring-orange-500 md:px-4 md:py-3 md:text-base"
                 >
                   <option value="">All Sizes</option>
-                  {[6, 9, 11, 12, 13, 14, 15, 18].map((value) => (
+                  {[6, 9, 11, 12, 13, 14, 15, 18,21,24].map((value) => (
                     <option key={value} value={`${value} inches`}>
                       {value} inches
                     </option>

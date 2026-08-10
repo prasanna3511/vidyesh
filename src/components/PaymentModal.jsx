@@ -5,6 +5,7 @@ import { useAuthenticated, useUserDisplayName, useUserEmail } from '@nhost/react
 import nhost, { getSafeStorageUrl } from '../nhost';
 import { generateBookingPdf } from '../utils/bookingPdf';
 import { getFirstImageFileId, loadPdfImageDataUrl } from '../utils/imageData';
+import { MURTI_STORED_AT_OPTIONS } from '../constants/murtiOptions';
 
 const getCurrentDbDate = () => new Date().toISOString().split('T')[0];
 
@@ -41,7 +42,8 @@ const UPDATE_MURTI_HISTORY = gql`
     $discount_price: numeric,
     $paid_amount: numeric!,
     $payment_mode: String!,
-    $suggestions: String!
+    $suggestions: String!,
+    $stored_at: String
   ) {
     update_murti_history(
       where: { id: { _eq: $_eq } },
@@ -56,7 +58,8 @@ const UPDATE_MURTI_HISTORY = gql`
         discount_price: $discount_price,
         paid_amount: $paid_amount,
         payment_mode: $payment_mode,
-        suggestions: $suggestions
+        suggestions: $suggestions,
+        stored_at: $stored_at
       }
     ) {
       affected_rows
@@ -81,6 +84,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
     discountPrice: bappa?.discount_price || '',
     amount: '',
     paymentMode: 'Online',
+    stored_at: bappa?.stored_at || '',
     address: '',
     suggestions: [],
     suggestionsEnabled: false
@@ -161,6 +165,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
         paid_amount: savedBookingDetails.amount,
         discount_price: savedBookingDetails.discountPrice,
         payment_mode: savedBookingDetails.paymentMode,
+        stored_at: savedBookingDetails.stored_at,
         address: savedBookingDetails.address,
         suggestions: savedBookingDetails.suggestions?.join(', '),
         booked_by: authenticatedUserEmail,
@@ -248,7 +253,8 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
           discount_price: Number(formData.discountPrice),
           paid_amount: parseFloat(formData.amount),
           payment_mode: formData.paymentMode,
-          suggestions: formData.suggestions.join(', ')
+          suggestions: formData.suggestions.join(', '),
+          stored_at: formData.stored_at || null,
         }
       });
 
@@ -337,7 +343,7 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2"><Phone className="inline w-4 h-4 mr-2" />Phone Number *</label>
-              <input name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} required className="w-full px-4 py-3 border rounded-xl text-gray-800" />
+              <input name="phoneNumber" type="tel" inputMode="numeric" pattern="[0-9]*" value={formData.phoneNumber} onChange={handleInputChange} required className="w-full px-4 py-3 border rounded-xl text-gray-800" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2"><Mail className="inline w-4 h-4 mr-2" />Email (optional)</label>
@@ -345,11 +351,11 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2"><IndianRupee className="inline w-4 h-4 mr-2" />Discounted Price *</label>
-              <input name="discountPrice" value={formData.discountPrice} onChange={handleInputChange} required className="w-full px-4 py-3 border rounded-xl text-gray-800" />
+              <input name="discountPrice" type="text" inputMode="decimal" value={formData.discountPrice} onChange={handleInputChange} required className="w-full px-4 py-3 border rounded-xl text-gray-800" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2"><Coins className="inline w-4 h-4 mr-2" />Amount Paid</label>
-              <input name="amount" value={formData.amount} onChange={handleInputChange} required className="w-full px-4 py-3 border rounded-xl text-gray-800" />
+              <input name="amount" type="text" inputMode="decimal" value={formData.amount} onChange={handleInputChange} required className="w-full px-4 py-3 border rounded-xl text-gray-800" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Mode</label>
@@ -361,6 +367,22 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
               >
                 <option value="Online">Online</option>
                 <option value="Cash">Cash</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Murti will be stored at</label>
+              <select
+                name="stored_at"
+                value={formData.stored_at}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border rounded-xl text-gray-800 bg-white"
+              >
+                <option value="">Select Storage Location</option>
+                {MURTI_STORED_AT_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="border-t pt-4 mt-4">
