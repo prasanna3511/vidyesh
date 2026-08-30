@@ -1,10 +1,9 @@
 import React, { useRef, useState } from "react";
-import { X, Upload, Crown, Ruler, IndianRupee, Camera } from "lucide-react";
-import { gql, useMutation } from '@apollo/client';
-import  nhost from '../nhost';
-import { MURTI_STORED_AT_OPTIONS } from '../constants/murtiOptions';
+import { Camera, Crown, IndianRupee, Ruler, Upload, X } from "lucide-react";
+import { api } from "../lib/api.js";
+import { MURTI_STORED_AT_OPTIONS } from "../constants/murtiOptions";
 
-const SUPPLIER_OPTIONS = ["P.B", "S.H", "N.P", "M.H", "A.M", "D.P","R.S", "V.W"];
+const SUPPLIER_OPTIONS = ["P.B", "S.H", "N.P", "M.H", "A.M", "D.P", "R.S", "V.W"];
 const MURTI_DESIGN_OPTIONS = [
   "Dagdusheth",
   "Bal Ganesh",
@@ -26,51 +25,10 @@ const MURTI_DESIGN_OPTIONS = [
   "Lalbaug"
 ];
 
-const INSERT_MURTI = gql`
-  mutation InsertMurti(
-    $murti_id: String!,
-    $final_price: String!,
-    $size: String!,
-    $booking_status: String!,
-    $image: String!,
-    $Supplier: String!,
-    $murti_design: String!,
-    $stored_at: String
-  ) {
-    insert_murti_history(objects: {
-      murti_id: $murti_id,
-      final_price: $final_price,
-      size: $size,
-      booking_status: $booking_status,
-      image: $image,
-      Supplier: $Supplier,
-      murti_design: $murti_design,
-      stored_at: $stored_at
-    }) {
-      returning {
-        id
-      }
-    }
-  }
-`;
-
-const INSERT_MURTI_IMAGE = gql`
-  mutation InsertMurtiImage($image_id: String!, $murti_id: Int!) {
-    insert_murti_images(objects: { image_id: $image_id, murti_id: $murti_id }) {
-      returning {
-        id
-        image_id
-        murti_id
-      }
-    }
-  }
-`;
-
 const AddBappaModal = ({ onClose, onAddBappa }) => {
-  const [insertMurtiImage] = useMutation(INSERT_MURTI_IMAGE);
   const galleryInputRef = useRef(null);
   const cameraInputRef = useRef(null);
-
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     id: "",
     size: "",
@@ -78,17 +36,13 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
     supplier: "",
     murti_design: "",
     stored_at: "",
-    images: [], // array of base64 previews
-    imageFiles: [], // actual File objects
+    images: [],
+    imageFiles: [],
   });
-  const [insertMurti] = useMutation(INSERT_MURTI);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const readFileAsDataUrl = (file) =>
@@ -99,67 +53,16 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
       reader.readAsDataURL(file);
     });
 
-  const loadImageElement = (src) =>
-    new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = src;
-    });
-
-  const blobToFile = (blob, originalName) => {
-    const safeBaseName = String(originalName || "murti-image").replace(/\.[^.]+$/, "");
-    return new File([blob], `${safeBaseName}.jpg`, {
-      type: "image/jpeg",
-      lastModified: Date.now(),
-    });
-  };
-
-  const normalizeImageFile = async (file) => {
-    const dataUrl = await readFileAsDataUrl(file);
-    const image = await loadImageElement(dataUrl);
-    const canvas = document.createElement("canvas");
-    canvas.width = image.naturalWidth || image.width;
-    canvas.height = image.naturalHeight || image.height;
-    const context = canvas.getContext("2d");
-    context.drawImage(image, 0, 0);
-
-    const normalizedBlob = await new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          reject(new Error("Failed to convert camera image."));
-          return;
-        }
-        resolve(blob);
-      }, "image/jpeg", 0.92);
-    });
-
-    return blobToFile(normalizedBlob, file.name);
-  };
-
   const handleImageChange = async (e) => {
-    const files = Array.from(e.target.files);
-    
+    const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-  
+
     try {
-      const normalizedFiles = await Promise.all(files.map((file) => normalizeImageFile(file)));
-      const imagePreviews = await Promise.all(
-        normalizedFiles.map(
-          (file) =>
-            new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-            })
-        )
-      );
-  
+      const imagePreviews = await Promise.all(files.map((file) => readFileAsDataUrl(file)));
       setFormData((prev) => ({
         ...prev,
-        images: [...prev.images, ...imagePreviews], // Append new images
-        imageFiles: [...prev.imageFiles, ...normalizedFiles], // Append new files
+        images: [...prev.images, ...imagePreviews],
+        imageFiles: [...prev.imageFiles, ...files],
       }));
       e.target.value = "";
     } catch (error) {
@@ -175,305 +78,135 @@ const AddBappaModal = ({ onClose, onAddBappa }) => {
       imageFiles: prev.imageFiles.filter((_, i) => i !== index),
     }));
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
     if (!formData.id || !formData.size || !formData.price) {
       alert("Please fill in all required fields");
       return;
     }
-  
-    let mainImageUrl = ""; // For insert_murti_history
-    const uploadedImageIds = [];
-  
+
+    setIsSaving(true);
     try {
-      // Upload all images
-      for (let file of formData.imageFiles) {
-        const result = await nhost.storage.upload({
-          file,
-          bucketId: 'default',
-        });
-  
-        if (result.error) {
-          throw new Error(result.error.message);
-        }
-  
-        const publicUrl = nhost.storage.getPublicUrl({ fileId: result.fileMetadata.id });
-  
-        uploadedImageIds.push(result.fileMetadata.id);
-  
-        // Use the first image as main image
-        if (!mainImageUrl) {
-          mainImageUrl = publicUrl;
-        }
-      }
-  
-      // Insert main murti record
-      const { data } = await insertMurti({
-        variables: {
-          murti_id: formData.id,
-          final_price: formData.price,
-          size: formData.size,
-          booking_status: "available",
-          image: mainImageUrl || " ",
-          Supplier: formData.supplier,
-          murti_design: formData.murti_design,
-          stored_at: formData.stored_at || null,
-        },
-      });
-  
-      const murti_id = data.insert_murti_history.returning[0].id; // assuming it's an integer for murti_images
-  console.log("data : ",data)
-      // Insert image references
-      for (let image_id of uploadedImageIds) {
-        await insertMurtiImage({
-          variables: {
-            murti_id,
-            image_id,
-          },
-        });
-      }
-  
-      // Optional: callback for UI
-      onAddBappa({
-        name: formData.id,
+      const response = await api.post("/murtis", {
+        murti_id: formData.id,
+        final_price: Number(formData.price),
         size: formData.size,
-        price: parseInt(formData.price),
-        image: mainImageUrl,
-        supplier: formData.supplier,
-        murti_design: formData.murti_design,
-        stored_at: formData.stored_at,
+        booking_status: "available",
+        image: formData.images[0] || null,
+        supplier: formData.supplier || null,
+        murti_design: formData.murti_design || null,
+        stored_at: formData.stored_at || null,
+        images: formData.images.map((image, index) => ({
+          image_ref: image,
+          sort_order: index,
+        })),
       });
-  
+
+      onAddBappa?.(response.data);
       onClose();
     } catch (error) {
-      console.error("Error saving murti or images:", error);
-      alert("Something went wrong while saving.");
+      console.error("Error saving murti:", error);
+      alert(error.message || "Something went wrong while saving.");
+    } finally {
+      setIsSaving(false);
     }
   };
-  
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-gradient-to-r from-green-500 to-green-600 p-4 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-white flex items-center space-x-2">
-            <Crown className="h-6 w-6" />
-            <span>Add New Murti</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white">
+        <div className="sticky top-0 flex items-center justify-between bg-gradient-to-r from-green-500 to-green-600 p-4">
+          <h3 className="flex items-center space-x-2 text-xl font-bold text-white">
+            <Crown className="h-5 w-5" />
+            <span>Add Murti</span>
           </h3>
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
-          >
+          <button onClick={onClose} className="rounded-full p-2 text-white hover:bg-white/20">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Crown className="h-4 w-4 inline mr-2" />
-              Murti id *
-            </label>
-            <input
-              type="text"
-              name="id"
-              value={formData.id}
-              onChange={handleInputChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
-              placeholder="e.g., Vakratunda Maharaj"
-            />
+            <label className="mb-2 block text-sm font-medium text-gray-700">Murti ID *</label>
+            <input name="id" value={formData.id} onChange={handleInputChange} className="w-full rounded-xl border px-4 py-3 text-gray-800" />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Ruler className="h-4 w-4 inline mr-2" />
-              Size *
-            </label>
-            <select
-              name="size"
-              value={formData.size}
-              onChange={handleInputChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 bg-white"
-            >
-              <option value="" disabled>
-                Select Size
-              </option>
-              {[6, 9, 11, 12, 13, 14, 15, 18,21,24].map((value) => (
-                <option key={value} value={`${value} inches`}>
-                  {value} inches
-                </option>
+            <label className="mb-2 block text-sm font-medium text-gray-700"><Ruler className="mr-2 inline h-4 w-4" />Size *</label>
+            <input name="size" value={formData.size} onChange={handleInputChange} className="w-full rounded-xl border px-4 py-3 text-gray-800" />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700"><IndianRupee className="mr-2 inline h-4 w-4" />Price *</label>
+            <input name="price" type="number" value={formData.price} onChange={handleInputChange} className="w-full rounded-xl border px-4 py-3 text-gray-800" />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Supplier</label>
+            <select name="supplier" value={formData.supplier} onChange={handleInputChange} className="w-full rounded-xl border px-4 py-3 text-gray-800">
+              <option value="">Select Supplier</option>
+              {SUPPLIER_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
               ))}
             </select>
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <IndianRupee className="h-4 w-4 inline mr-2" />
-              Price *
-            </label>
-            <input
-              type="text"
-              name="price"
-              value={formData.price}
-              onChange={handleInputChange}
-              required
-              min="0"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
-              placeholder="Enter price in rupees"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Supplier
-            </label>
-            <select
-              name="supplier"
-              value={formData.supplier}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 bg-white"
-            >
-              <option value="" disabled>
-                Select Supplier
-              </option>
-              {SUPPLIER_OPTIONS.map((supplier) => (
-                <option key={supplier} value={supplier}>
-                  {supplier}
-                </option>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Murti Design</label>
+            <select name="murti_design" value={formData.murti_design} onChange={handleInputChange} className="w-full rounded-xl border px-4 py-3 text-gray-800">
+              <option value="">Select Murti Design</option>
+              {MURTI_DESIGN_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
               ))}
             </select>
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Murti Design
-            </label>
-            <select
-              name="murti_design"
-              value={formData.murti_design}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 bg-white"
-            >
-              <option value="" disabled>
-                Select Murti Design
-              </option>
-              {MURTI_DESIGN_OPTIONS.map((design) => (
-                <option key={design} value={design}>
-                  {design}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Murti will be stored at
-            </label>
-            <select
-              name="stored_at"
-              value={formData.stored_at}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 bg-white"
-            >
+            <label className="mb-2 block text-sm font-medium text-gray-700">Murti will be stored at</label>
+            <select name="stored_at" value={formData.stored_at} onChange={handleInputChange} className="w-full rounded-xl border px-4 py-3 text-gray-800">
               <option value="">Select Storage Location</option>
               {MURTI_STORED_AT_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
+                <option key={option} value={option}>{option}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Upload className="h-4 w-4 inline mr-2" />
-              Bappa Images
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => galleryInputRef.current?.click()}
-                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                <Upload className="mr-2 inline h-4 w-4" />
-                Upload From Gallery
+            <label className="mb-3 block text-sm font-medium text-gray-700">Images</label>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => galleryInputRef.current?.click()} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700">
+                <Upload className="h-4 w-4" />
+                Upload
               </button>
-              <button
-                type="button"
-                onClick={() => cameraInputRef.current?.click()}
-                className="flex-1 rounded-xl border border-green-300 bg-green-50 px-4 py-3 font-medium text-green-700 transition hover:bg-green-100"
-              >
-                <Camera className="mr-2 inline h-4 w-4" />
-                Capture From Camera
+              <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700">
+                <Camera className="h-4 w-4" />
+                Camera
               </button>
             </div>
-            <input
-              ref={galleryInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageChange}
-              className="hidden"
-            />
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              capture="environment"
-              onChange={handleImageChange}
-              className="hidden"
-            />
-            
+            <input ref={galleryInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleImageChange} />
+            <input ref={cameraInputRef} type="file" multiple accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
+
             {formData.images.length > 0 && (
-              <div className="mt-3">
-                <p className="text-sm text-gray-600 mb-2">
-                  Selected Images ({formData.images.length}):
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  {formData.images.map((img, index) => (
-                    <div key={`image-${index}`} className="relative">
-                      <img
-                        src={img}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {formData.images.map((image, index) => (
+                  <div key={`${image}-${index}`} className="relative overflow-hidden rounded-xl border">
+                    <img src={image} alt={`Murti ${index + 1}`} className="h-24 w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 px-2 text-white"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
-
-            <p className="text-sm text-gray-500 mt-2">
-              You can upload from gallery or open the camera directly. If no images are uploaded, a default image will be used.
-            </p>
           </div>
 
-          <div className="flex space-x-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-300 text-gray-700 py-3 px-6 rounded-xl font-bold hover:bg-gray-400 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-300"
-            >
-              Add Bappa
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 py-3 font-bold text-white disabled:opacity-70"
+          >
+            {isSaving ? "Saving..." : "Save Murti"}
+          </button>
         </form>
       </div>
     </div>

@@ -1,19 +1,6 @@
-import nhost, { getDirectStorageUrl, getSafeStorageUrl } from '../nhost';
+import { getImageUrl } from './murti.js';
 
 const JPEG_QUALITY = 0.95;
-
-/**
- * Nhost storage is fronted by a Cloudflare cache that stores responses without
- * `Vary: Origin`, so a cached copy created by a plain <img> load carries no
- * `access-control-allow-origin` and blocks every later fetch of that same URL.
- * A unique query string gives the request its own cache key, forcing a MISS,
- * and freshly generated responses always include the CORS header.
- */
-const withCacheBuster = (url) => {
-  if (!url) return url;
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}cors=${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-};
 
 const drawToJpegDataUrl = (source, width, height) => {
   const canvas = document.createElement('canvas');
@@ -82,7 +69,8 @@ const fetchToDataUrl = async (url) => {
   return blobToDataUrl(blob);
 };
 
-export const getFirstImageFileId = (bappa) => bappa?.images?.[0]?.image_id || '';
+export const getFirstImageFileId = (bappa) =>
+  bappa?.images?.[0]?.image_ref || bappa?.images?.[0]?.image_id || '';
 
 const attempt = async (label, loader) => {
   try {
@@ -95,46 +83,23 @@ const attempt = async (label, loader) => {
   }
 };
 
-/**
- * Resolves a murti image into a JPEG data URL that jsPDF can embed.
- *
- * Attempts, in order of reliability:
- *  1. the same-origin storage proxy — CORS cannot apply, so this always works
- *     where the proxy is configured (dev server + Netlify);
- *  2. the direct storage URL with a cache buster — no proxy needed, and the
- *     forced cache MISS is what makes the CORS header show up;
- *  3. an authenticated SDK download — covers files that are not publicly readable;
- *  4. whatever URL the caller already had.
- */
 export const loadPdfImageDataUrl = async ({ fileId, url } = {}) => {
   if (typeof url === 'string' && url.startsWith('data:image/')) {
     return url;
   }
 
   if (fileId) {
-    const viaProxy = await attempt('same-origin proxy', () => fetchToDataUrl(getSafeStorageUrl(fileId)));
-    if (viaProxy) return viaProxy;
-
-    const viaDirect = await attempt('direct storage URL', () =>
-      fetchToDataUrl(withCacheBuster(getDirectStorageUrl(fileId)))
-    );
-    if (viaDirect) return viaDirect;
-
-    const viaSdk = await attempt('authenticated download', async () => {
-      const { file, error } = await nhost.storage.download({ fileId });
-      if (error) throw error;
-      return blobToDataUrl(file);
-    });
-    if (viaSdk) return viaSdk;
+    const viaFileId = await attempt('stored image reference', () => fetchToDataUrl(getImageUrl(fileId)));
+    if (viaFileId) return viaFileId;
   }
 
   if (url) {
     const viaUrl = await attempt('caller URL', () =>
-      fetchToDataUrl(url.startsWith('blob:') || url.startsWith('/') ? url : withCacheBuster(url))
+      fetchToDataUrl(getImageUrl(url))
     );
     if (viaUrl) return viaUrl;
 
-    const viaElement = await attempt('image element', () => urlToDataUrl(url));
+    const viaElement = await attempt('image element', () => urlToDataUrl(getImageUrl(url)));
     if (viaElement) return viaElement;
   }
 

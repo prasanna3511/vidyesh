@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
-import { useSignInEmailPassword } from '@nhost/react';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const LoginModal = ({ onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signInEmailPassword, isLoading, isError, error } = useSignInEmailPassword();
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleLogin = async () => {
-    await signInEmailPassword(email, password);
+    setIsLoading(true);
+    setError('');
+    try {
+      await login(email, password);
+      onClose?.();
+    } catch (loginError) {
+      setError(loginError.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,8 +49,8 @@ const LoginModal = ({ onClose }) => {
             />
           </div>
 
-          {isError && (
-            <p className="text-sm text-red-600 font-medium">{error.message}</p>
+          {error && (
+            <p className="text-sm text-red-600 font-medium">{error}</p>
           )}
 
           <div className="flex justify-end space-x-3 pt-4">

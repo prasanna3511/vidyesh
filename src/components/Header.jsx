@@ -1,16 +1,14 @@
 import React from 'react';
 import { LogOut, Settings } from 'lucide-react';
-import { useAuthenticated, useUserEmail, useUserDisplayName } from '@nhost/react';
 import logo from '../assets/logo.png';
-import nhost from '../nhost';
+import { useAuth } from '../context/AuthContext.jsx';
 
 
 const Header = ({ currentPage, setCurrentPage }) => {
-  const isAuthenticated = useAuthenticated();
-  const userEmail = useUserDisplayName();
+  const { isAuthenticated, user, logout } = useAuth();
 
   const handleLogout = async () => {
-    await nhost.auth.signOut();
+    logout();
     setCurrentPage('user');
   };
 
@@ -29,7 +27,7 @@ const Header = ({ currentPage, setCurrentPage }) => {
           <div className="flex flex-wrap items-center justify-end gap-3">
             {currentPage === 'admin' && isAuthenticated && (
               <span className="rounded-lg bg-white/10 px-3 py-2 text-sm text-white">
-                {userEmail || 'Admin'}
+                {user?.name || user?.email || 'Admin'}
               </span>
             )}
 

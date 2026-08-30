@@ -2,17 +2,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
-
-import nhost from './nhost';
-import { NhostProvider } from '@nhost/react';
-import { NhostApolloProvider } from '@nhost/react-apollo';
+import { AuthProvider } from './context/AuthContext.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <NhostProvider nhost={nhost}>
-      <NhostApolloProvider nhost={nhost}>
+    <AuthProvider>
         <App />
-      </NhostApolloProvider>
-    </NhostProvider>
+    </AuthProvider>
   </StrictMode>
 );

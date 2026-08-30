@@ -1,0 +1,24 @@
+{
+  "name": "vidyesh-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "db:schema": "node scripts/run-schema.js",
+    "db:import:murti-history": "node scripts/import-murti-history.js",
+    "download:nhost-images": "node scripts/download-nhost-images.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.16.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

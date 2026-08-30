@@ -1,117 +1,68 @@
-import React, { useEffect, useState } from 'react';
-import nhost from '../nhost';
-import { gql, useMutation, useQuery } from '@apollo/client';
+import React, { useState } from 'react';
+import { getImageUrl } from '../utils/murti.js';
 
-const round_up = gql`
-mutation MyMutation5($_eq: Int = 10, $booking_status: String = "", $roundup_amount: numeric = "") {
-  update_murti_history(where: {id: {_eq: $_eq}}, _set: {booking_status: $booking_status, roundup_amount: $roundup_amount}) {
-    affected_rows
-  }
-}
-
-`;
-const RoundUpModal = ({ bappa, onClose  , refetch}) => {
-  if (!bappa) return null;
-  const [imageUrl, setImageUrl] = useState("");
+const RoundUpModal = ({ bappa, onClose, onSubmit }) => {
   const [roundupAmount, setRoundupAmount] = useState(
     bappa.roundup_amount ? Number(bappa.roundup_amount) : 0
   );
-  const [roundUp] = useMutation(round_up);
-  
 
-  useEffect(() => {
-    if (bappa?.images?.length > 0) {
-      const urls = nhost.storage.getPublicUrl({ fileId: bappa.images[0].image_id });
-      setImageUrl(urls);
-    }
-  }, [bappa]);
+  if (!bappa) return null;
 
   const markAsDelivered = async () => {
-    console.log("bapppppsppspspspsppsp : ")
- 
-    try {
-      await roundUp({
-        variables: {
-          _eq:Number(bappa.id),
-          booking_status: "delivered",roundup_amount:roundupAmount,
-        }
-      });
-
-      await refetch(); // Refresh data
-      onClose()
-    } catch (err) {
-      console.error("Failed to approve Bappa:", err);
-      alert("Something went wrong while approving!");
-    }
+    await onSubmit(Number(bappa.id), roundupAmount === "" ? null : Number(roundupAmount));
+    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto p-6 relative animate-fadeIn">
-        
-        {/* Close Button */}
-        <button
-          className="absolute top-3 right-5 text-gray-400 hover:text-gray-700"
-          onClick={onClose}
-          title="Close"
-        >
+      <div className="relative mx-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <button className="absolute right-5 top-3 text-gray-400 hover:text-gray-700" onClick={onClose} title="Close">
           &times;
         </button>
 
-        {/* Murti Image */}
-        <div className="w-32 h-32 mx-auto rounded-full overflow-hidden shadow mb-4 border-4 border-gray-100 bg-gray-200 flex items-center justify-center">
-          <img
-            src={imageUrl}
-            alt={bappa.name}
-            className="object-contain w-full h-full"
-          />
+        <div className="mb-4 flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-gray-100 bg-gray-200 shadow">
+          <img src={getImageUrl(bappa.image)} alt={bappa.name} className="h-full w-full object-contain" />
         </div>
 
-        {/* Murti Details */}
-        <div className="text-center space-y-2">
-          <h3 className="text-2xl font-bold text-blue-800 mb-2">{bappa.name}</h3>
+        <div className="space-y-2 text-center">
+          <h3 className="mb-2 text-2xl font-bold text-blue-800">{bappa.name}</h3>
           <p className="text-sm text-gray-600">Size: <span className="font-bold">{bappa.size}</span></p>
           <p className="text-sm text-gray-600">ID: <span className="font-bold">#{bappa.id}</span></p>
-          <p className="text-green-600 font-bold text-lg">Price: ₹{bappa.price}</p>
-          <p className="text-blue-700 text-lg">
-            Discount Price: {bappa.discount_price ? `₹${bappa.discount_price}` : '-'}
-          </p>
-            <p className="text-blue-700 text-lg">
-            paid Amount: {bappa.paid_amount ? `₹${bappa.paid_amount}` : '-'}
-          </p>
-          <div className="flex flex-col items-center mt-2">
-  <label htmlFor="roundup-amount" className="text-sm text-gray-600 mb-1 font-semibold">Roundup Amount</label>
-  <input
-    id="roundup-amount"
-    type="number"
-    value={roundupAmount}
-    min={0}
-    onChange={(e) => {
-      const value = e.target.value;
-      setRoundupAmount(value === "" ? "" : Number(value));
-    }}
-    className="px-3 py-1 rounded border border-gray-300 w-36 focus:outline-none focus:ring-2 focus:ring-blue-400 text-center text-lg font-bold"
-    placeholder="Enter Amount"
-  />
-</div>
+          <p className="text-lg font-bold text-green-600">Price: ₹{bappa.price}</p>
+          <p className="text-lg text-blue-700">Discount Price: {bappa.discount_price ? `₹${bappa.discount_price}` : '-'}</p>
+          <p className="text-lg text-blue-700">Paid Amount: {bappa.paid_amount ? `₹${bappa.paid_amount}` : '-'}</p>
+
+          <div className="mt-2 flex flex-col items-center">
+            <label htmlFor="roundup-amount" className="mb-1 text-sm font-semibold text-gray-600">Roundup Amount</label>
+            <input
+              id="roundup-amount"
+              type="number"
+              value={roundupAmount}
+              min={0}
+              onChange={(e) => {
+                const value = e.target.value;
+                setRoundupAmount(value === "" ? "" : Number(value));
+              }}
+              className="w-36 rounded border border-gray-300 px-3 py-1 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Enter Amount"
+            />
+          </div>
 
           {bappa.fullName && (
-            <p className="text-gray-700 font-medium mt-2">{bappa.fullName} ({bappa.phoneNumber})</p>
+            <p className="mt-2 font-medium text-gray-700">{bappa.fullName} ({bappa.phoneNumber})</p>
           )}
         </div>
 
-        {/* Suggestions / Additional Details */}
         {bappa.suggestions && (
-          <div className="mt-4 p-2 bg-gray-100 rounded-md text-gray-700">
+          <div className="mt-4 rounded-md bg-gray-100 p-2 text-gray-700">
             <strong>Suggestions:</strong> {bappa.suggestions}
           </div>
         )}
 
-        {/* ===== Mark as Delivered Button ===== */}
         <div className="mt-6 text-center">
           <button
             onClick={markAsDelivered}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition-all duration-200"
+            className="rounded-full bg-green-600 px-6 py-2 font-bold text-white shadow-lg transition-all duration-200 hover:bg-green-700"
           >
             Mark as Delivered
           </button>
