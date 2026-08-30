@@ -23,7 +23,10 @@ import ApproveBappaModal from './ApproveBappaModal';
 import RoundUpModal from './RoundupModal';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
+import { generateBookingPdf } from '../utils/bookingPdf';
+import { getFirstImageFileId, loadPdfImageDataUrl } from '../utils/imageData';
 import { getImageUrl, normalizeImageRecord, normalizeMurti } from '../utils/murti.js';
+import { shareBookingMessage } from '../utils/shareBookingMessage.js';
 
 const SUPPLIER_OPTIONS = ['P.B', 'S.H', 'N.P', 'M.H', 'A.M', 'D.P', 'R.S', 'V.W'];
 const MURTI_DESIGN_OPTIONS = [
@@ -784,29 +787,47 @@ const AdminPage = ({ onAddBappa }) => {
     const selectedTemplate =
       advertisementMessages.find((item) => item.id === selectedMessageId) || advertisementMessages[0] || null;
 
-    const message = [
-      selectedTemplate?.title ? `*${selectedTemplate.title}*` : null,
-      selectedTemplate?.message || null,
-      [
-        'Customer Details',
-        `Name: ${bappa.fullName || '-'}`,
-        `Phone: ${bappa.phoneNumber || '-'}`,
-        `Booked by: ${bappa.booked_by || '-'}`,
-        bappa.address ? `Address: ${bappa.address}` : null,
-        `Murti: ${bappa.name || '-'}`,
-        `Size: ${bappa.size || '-'}`,
-      ].filter(Boolean).join('\n'),
-      `Message Sent By :- ${user?.name || user?.email || 'Admin'}`,
-      'This is an automated message.',
-    ]
-      .filter(Boolean)
-      .join('\n\n');
+    try {
+      const imageFileId = getFirstImageFileId(bappa);
+      const imageDataUrl = await loadPdfImageDataUrl({ fileId: imageFileId, url: bappa.image });
+      const { blob, fileName } = await generateBookingPdf(
+        {
+          ...bappa,
+          booking_status: bappa.booking_status || 'booked',
+          imageUrl: getImageUrl(bappa.image),
+          imageDataUrl,
+        },
+        { autoSave: false }
+      );
 
-    window.open(
-      `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
+      const message = [
+        selectedTemplate?.title ? `*${selectedTemplate.title}*` : null,
+        selectedTemplate?.message || null,
+        [
+          'Customer Details',
+          `Name: ${bappa.fullName || '-'}`,
+          `Phone: ${bappa.phoneNumber || '-'}`,
+          `Booked by: ${bappa.booked_by || '-'}`,
+          bappa.address ? `Address: ${bappa.address}` : null,
+          `Murti: ${bappa.name || '-'}`,
+          `Size: ${bappa.size || '-'}`,
+        ].filter(Boolean).join('\n'),
+        `Message Sent By :- ${user?.name || user?.email || 'Admin'}`,
+        'This is an automated message.',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      await shareBookingMessage({
+        blob,
+        fileName,
+        message,
+        whatsappNumber,
+      });
+    } catch (error) {
+      console.error('Failed to prepare booking message:', error);
+      alert('Could not prepare the booking message. Please try again.');
+    }
   };
 
   const handleDelete = async (id) => {

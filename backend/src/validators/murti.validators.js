@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-const nullableString = z.string().trim().min(1).nullable().optional();
+const nullableString = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return value;
+    const trimmedValue = value.trim();
+    return trimmedValue === "" ? null : trimmedValue;
+  },
+  z.string().trim().min(1).nullable().optional()
+);
 const nullableNumber = z.coerce.number().nullable().optional();
 
 export const createMurtiSchema = z.object({

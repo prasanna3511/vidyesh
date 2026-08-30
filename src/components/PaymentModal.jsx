@@ -6,6 +6,7 @@ import { generateBookingPdf } from '../utils/bookingPdf';
 import { getFirstImageFileId, loadPdfImageDataUrl } from '../utils/imageData';
 import { MURTI_STORED_AT_OPTIONS } from '../constants/murtiOptions';
 import { getImageUrl } from '../utils/murti.js';
+import { shareBookingMessage } from '../utils/shareBookingMessage.js';
 
 const getCurrentDbDate = () => new Date().toISOString().split('T')[0];
 
@@ -77,10 +78,11 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
       const imageFileId = getFirstImageFileId(bappa);
       const imageDataUrl = await loadPdfImageDataUrl({ fileId: imageFileId, url: bappa.image });
 
-      await generateBookingPdf(
+      const { blob, fileName } = await generateBookingPdf(
         {
           ...bappa,
           name: bappa.murti_id || bappa.name,
+          booking_status: bappa.booking_status || 'booked',
           price: bappa.final_price,
           fullName: savedBookingDetails.fullName,
           phoneNumber: savedBookingDetails.phoneNumber,
@@ -110,7 +112,6 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
           `Murti: ${bappa.murti_id || bappa.name || '-'}`,
           `Size: ${bappa.size || '-'}`,
         ].filter(Boolean).join('\n'),
-        'Booking PDF has been generated locally.',
         '– *Vidyesh Ganeshmurti*',
         `Message Sent By :- ${user?.name || user?.email || 'Admin'}`,
         'This is an automated message.',
@@ -118,7 +119,15 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
         .filter(Boolean)
         .join('\n\n');
 
-      window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+      await shareBookingMessage({
+        blob,
+        fileName,
+        message,
+        whatsappNumber,
+      });
+    } catch (error) {
+      console.error('Failed to prepare booking message:', error);
+      alert('Could not prepare the booking message. Please try again.');
     } finally {
       setIsSendingMessage(false);
     }
@@ -144,14 +153,14 @@ const PaymentModal = ({ bappa, onClose, onBookingComplete }) => {
         booked_by: user.email,
         booking_status: 'booked',
         address: formData.address.trim() || null,
-        customer_email: formData.email || null,
+        customer_email: formData.email.trim() || null,
         customer_name: formData.fullName,
         customer_phone: formData.phoneNumber,
         booking_date: getCurrentDbDate(),
         discount_price: Number(formData.discountPrice),
         paid_amount: Number(formData.amount),
         payment_mode: formData.paymentMode,
-        suggestions: formData.suggestions.join(', '),
+        suggestions: formData.suggestions.length > 0 ? formData.suggestions.join(', ') : null,
         stored_at: formData.stored_at || null,
       });
 

@@ -44,16 +44,23 @@ const UserPage = () => {
   const [error, setError] = useState("");
   const [murtis, setMurtis] = useState([]);
 
-  const loadMurtis = async () => {
-    setLoading(true);
+  const loadMurtis = async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const response = await api.get("/murtis");
-      setMurtis((response.data || []).map(normalizeMurti));
+      const nextMurtis = (response.data || []).map(normalizeMurti);
+      setMurtis(nextMurtis);
       setError("");
+      return nextMurtis;
     } catch (loadError) {
       setError(loadError.message || "Failed to load murtis");
+      return [];
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -64,9 +71,10 @@ const UserPage = () => {
   };
 
   const handleBookingComplete = async () => {
-    setShowPaymentModal(false);
-    setSelectedBappa(null);
-    await loadMurtis();
+    const nextMurtis = await loadMurtis({ silent: true });
+    setSelectedBappa((currentSelectedBappa) =>
+      nextMurtis.find((item) => item.id === currentSelectedBappa?.id) || currentSelectedBappa
+    );
   };
 
   useEffect(() => {
@@ -166,6 +174,26 @@ const UserPage = () => {
             <div className="mx-auto mb-8 max-w-3xl rounded-3xl border border-white/15 bg-black/45 px-4 py-5 text-center shadow-2xl backdrop-blur-sm md:px-8">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-orange-300">Online Ganesh Murti Booking</p>
               <h2 className="mt-3 text-2xl font-bold text-white md:text-3xl">Simple booking in a few quick steps</h2>
+              <div className="mt-6 space-y-4 text-md font-medium text-white md:text-sm">
+                <p>
+                  <span className="font-bold">Step 1:</span>{' '}
+                  Visit{' '}
+                  <a
+                    href="https://vidyeshganeshmurti.netlify.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-orange-300 underline underline-offset-4"
+                  >
+                    vidyeshganeshmurti.netlify.app
+                  </a>
+                  .
+                </p>
+                <p><span className="font-bold">Step 2:</span> Select your preferred size.</p>
+                <p><span className="font-bold">Step 3:</span> Choose your favourite Murti.</p>
+                <p><span className="font-bold">Step 4:</span> Send the Murti No. or screenshot on WhatsApp.</p>
+                <p><span className="font-bold">Step 5:</span> Pay the booking advance via any UPI app.</p>
+                <p className="pt-2 font-bold text-emerald-300">Booking is confirmed after advance payment.</p>
+              </div>
             </div>
 
             <div className="mx-auto mb-10 grid max-w-5xl grid-cols-3 items-end gap-2 md:gap-4">
@@ -180,7 +208,7 @@ const UserPage = () => {
                   className="w-full rounded-2xl border border-white/10 bg-white/10 px-3 py-3 text-center text-sm text-white backdrop-blur-md focus:outline-none"
                 >
                   <option value="">All</option>
-                  {[...new Set(bappas.map((bappa) => bappa.size).filter(Boolean))].map((size) => (
+                  {[...new Set(bappas.map((bappa) => bappa.size).filter(Boolean))].sort((a, b) => parseInt(a) - parseInt(b)).map((size) => (
                     <option key={size} value={size} className="text-black">
                       {size}
                     </option>
