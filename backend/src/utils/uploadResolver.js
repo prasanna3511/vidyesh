@@ -74,4 +74,7 @@ export const resolveUploadedFile = async (value) => {
   return null;
 };
 
+export const getRelativeUploadPath = (absolutePath) =>
+  path.relative(uploadsRoot, absolutePath).split(path.sep).join("/");
+
 export { uploadsRoot };
