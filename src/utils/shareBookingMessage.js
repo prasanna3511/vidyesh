@@ -1,27 +1,31 @@
 export const shareBookingMessage = async ({ blob, fileName, message, whatsappNumber }) => {
-  if (
-    typeof navigator !== 'undefined' &&
-    typeof navigator.share === 'function' &&
-    typeof File !== 'undefined'
-  ) {
-    const file = new File([blob], fileName, { type: 'application/pdf' });
-    const shareData = {
-      files: [file],
-      title: fileName,
-      text: message,
+  const encodedMessage = encodeURIComponent(message);
+  const whatsappAppUrl = `whatsapp://send?phone=${whatsappNumber}&text=${encodedMessage}`;
+  const whatsappWebUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
+
+  if (typeof window !== 'undefined') {
+    const fallbackTimer = window.setTimeout(() => {
+      window.open(whatsappWebUrl, '_blank', 'noopener,noreferrer');
+    }, 800);
+
+    const clearFallback = () => {
+      window.clearTimeout(fallbackTimer);
+      document.removeEventListener('visibilitychange', clearOnHidden);
+      window.removeEventListener('pagehide', clearFallback);
+      window.removeEventListener('blur', clearFallback);
     };
 
-    if (typeof navigator.canShare !== 'function' || navigator.canShare(shareData)) {
-      await navigator.share(shareData);
-      return 'share';
-    }
-  }
+    const clearOnHidden = () => {
+      if (document.visibilityState === 'hidden') {
+        clearFallback();
+      }
+    };
 
-  window.open(
-    `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`,
-    '_blank',
-    'noopener,noreferrer'
-  );
+    document.addEventListener('visibilitychange', clearOnHidden);
+    window.addEventListener('pagehide', clearFallback, { once: true });
+    window.addEventListener('blur', clearFallback, { once: true });
+    window.location.href = whatsappAppUrl;
+  }
 
   return 'whatsapp';
 };
