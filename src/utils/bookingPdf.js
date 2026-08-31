@@ -97,6 +97,41 @@ const imageElementToData = (imageElement) => {
   };
 };
 
+const resolveBookingImage = async (bappa) => {
+  const sources = [];
+
+  if (bappa.imageElement) {
+    sources.push(() => imageElementToData(bappa.imageElement));
+  }
+
+  if (bappa.imageDataUrl) {
+    sources.push(() => loadImage(bappa.imageDataUrl));
+  }
+
+  if (bappa.imageUrl) {
+    sources.push(() => loadImage(bappa.imageUrl));
+  }
+
+  if (bappa.image) {
+    sources.push(() => loadImage(bappa.image));
+  }
+
+  let lastError = null;
+
+  for (const loadSource of sources) {
+    try {
+      const result = await loadSource();
+      if (result?.dataUrl && result.width && result.height) {
+        return result;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Image unavailable');
+};
+
 const wrapCanvasText = (ctx, text, maxWidth) => {
   const words = String(text || '').split(/\s+/).filter(Boolean);
   if (words.length === 0) return ['-'];
@@ -301,9 +336,7 @@ export async function generateBookingPdf(bappa, options = {}) {
 
   if (bappa.imageElement || bappa.imageDataUrl || bappa.imageUrl || bappa.image) {
     try {
-      const { dataUrl, width, height } = bappa.imageElement
-        ? imageElementToData(bappa.imageElement)
-        : await loadImage(bappa.imageDataUrl || bappa.imageUrl || bappa.image);
+      const { dataUrl, width, height } = await resolveBookingImage(bappa);
       const innerWidth = imageCardWidth - 8;
       const innerHeight = imageCardHeight - 8;
       const scale = Math.min(innerWidth / width, innerHeight / height);

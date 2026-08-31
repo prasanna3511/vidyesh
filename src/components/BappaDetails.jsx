@@ -16,6 +16,13 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
   const actualPrice = bappa.discount_price !== null ? Number(bappa.discount_price) : Number(bappa.price);
   const remainingAmount = actualPrice - Number(bappa.paid_amount || 0);
+  const bookingFields = [
+    { label: 'Name', value: bappa.fullName || bappa.customer_name || '-' },
+    { label: 'Phone', value: bappa.phoneNumber || bappa.customer_phone || '-' },
+    { label: 'Suggestions', value: bappa.suggestions || '-' },
+    { label: 'Stored At', value: bappa.stored_at || '-' },
+    { label: 'Address', value: bappa.address || '-' },
+  ];
 
   useEffect(() => {
     let isMounted = true;
@@ -26,7 +33,8 @@ export default function BappaDetailsModal({ bappa, onClose }) {
 
       try {
         const response = await api.get(`/murtis/${bappa.id}`);
-        const images = (response.data?.images || []).map(normalizeImageRecord);
+        const murtiData = response.data || {};
+        const images = (murtiData.images || []).map(normalizeImageRecord);
         const latestImageId = getFirstImageFileId({ images });
         const nextUrl = getImageUrl(latestImageId || bappa.image);
 
@@ -133,6 +141,20 @@ export default function BappaDetailsModal({ bappa, onClose }) {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-600">Remaining</span>
               <span className={`text-lg font-bold ${remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>₹{remainingAmount}</span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-2xl font-bold text-gray-800">Customer Details</h3>
+            <div className="mt-3 h-px bg-gray-200" />
+
+            <div className="mt-5 space-y-4">
+              {bookingFields.map((field) => (
+                <div key={field.label} className="rounded-2xl bg-gray-50 px-5 py-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-gray-500">{field.label}</p>
+                  <p className="mt-2 break-words text-xl font-bold text-gray-900">{field.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

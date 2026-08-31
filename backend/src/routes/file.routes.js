@@ -14,6 +14,7 @@ const normalizePrefix = (value) =>
   String(value || "")
     .trim()
     .replace(/^\/+|\/+$/g, "");
+const AWS_S3_HOST_PATTERN = /(^|\.)amazonaws\.com$|(^|\.)cloudfront\.net$/i;
 
 const buildS3Url = (absolutePath) => {
   const baseUrl = normalizeBaseUrl(process.env.S3_PUBLIC_BASE_URL);
@@ -43,6 +44,53 @@ const buildS3UrlFromObjectKey = (objectKey) => {
     .join("/");
 
   return `${baseUrl}/${normalizedKey}`;
+};
+
+const sendRemoteImage = async (res, url) => {
+  const response = await fetch(url, {
+    method: "GET",
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Could not fetch remote image: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "application/octet-stream";
+  const cacheControl = response.headers.get("cache-control");
+  const contentLength = response.headers.get("content-length");
+  const arrayBuffer = await response.arrayBuffer();
+
+  res.setHeader("Content-Type", contentType);
+  if (cacheControl) {
+    res.setHeader("Cache-Control", cacheControl);
+  }
+  if (contentLength) {
+    res.setHeader("Content-Length", contentLength);
+  }
+
+  return res.send(Buffer.from(arrayBuffer));
+};
+
+const isAllowedRemoteImageUrl = (value) => {
+  const normalizedValue = String(value || "").trim();
+  if (!/^https?:\/\//i.test(normalizedValue)) return false;
+
+  try {
+    const remoteUrl = new URL(normalizedValue);
+    const configuredBaseUrl = normalizeBaseUrl(process.env.S3_PUBLIC_BASE_URL);
+
+    if (configuredBaseUrl) {
+      const configuredUrl = new URL(configuredBaseUrl);
+      if (remoteUrl.origin === configuredUrl.origin) {
+        return true;
+      }
+    }
+
+    return AWS_S3_HOST_PATTERN.test(remoteUrl.hostname);
+  } catch {
+    return false;
+  }
 };
 
 const extractUuid = (value) => {
@@ -143,12 +191,16 @@ router.get("/by-ref", async (req, res, next) => {
       });
     }
 
+    if (isAllowedRemoteImageUrl(value)) {
+      return await sendRemoteImage(res, value);
+    }
+
     const resolvedFile = await resolveUploadedFile(value);
 
     if (resolvedFile) {
       const s3Url = buildS3Url(resolvedFile);
       if (s3Url) {
-        return res.redirect(302, s3Url);
+        return await sendRemoteImage(res, s3Url);
       }
 
       return res.sendFile(resolvedFile);
@@ -156,7 +208,7 @@ router.get("/by-ref", async (req, res, next) => {
 
     const directS3Url = await resolveS3UrlFromValue(value);
     if (directS3Url) {
-      return res.redirect(302, directS3Url);
+      return await sendRemoteImage(res, directS3Url);
     }
 
     return res.status(404).json({

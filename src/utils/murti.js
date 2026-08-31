@@ -3,12 +3,26 @@ import { API_BASE_URL, API_ORIGIN } from "../lib/api.js";
 const FALLBACK_IMAGE =
   "https://images.pexels.com/photos/8636095/pexels-photo-8636095.jpeg?auto=compress&cs=tinysrgb&w=500";
 
-const NHOST_STORAGE_PATTERN = /storage\.[a-z0-9-]+\.nhost\.run\/v1\/files/i;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const AWS_S3_HOST_PATTERN = /(^|\.)amazonaws\.com$|(^|\.)cloudfront\.net$/i;
 
 const buildBackendImageUrl = (value) =>
   `${API_BASE_URL.replace(/\/+$/, "")}/files/by-ref?value=${encodeURIComponent(value)}`;
+
+const isS3Url = (value) => {
+  const normalizedValue = String(value || "").trim();
+  if (!/^https?:\/\//i.test(normalizedValue)) {
+    return false;
+  }
+
+  try {
+    const url = new URL(normalizedValue);
+    return AWS_S3_HOST_PATTERN.test(url.hostname);
+  } catch {
+    return false;
+  }
+};
 
 export const getImageUrl = (value) => {
   const normalizedValue = String(value || "").trim();
@@ -32,7 +46,7 @@ export const getImageUrl = (value) => {
     return normalizedValue;
   }
 
-  if (UUID_PATTERN.test(normalizedValue) || NHOST_STORAGE_PATTERN.test(normalizedValue)) {
+  if (UUID_PATTERN.test(normalizedValue) || isS3Url(normalizedValue)) {
     return buildBackendImageUrl(normalizedValue);
   }
 
