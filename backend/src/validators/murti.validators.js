@@ -9,6 +9,7 @@ const nullableString = z.preprocess(
   z.string().trim().min(1).nullable().optional()
 );
 const nullableNumber = z.coerce.number().nullable().optional();
+const roundupNumber = z.coerce.number().nonnegative().nullable().optional();
 
 export const createMurtiSchema = z.object({
   murti_id: z.string().trim().min(1),
@@ -30,7 +31,7 @@ export const createMurtiSchema = z.object({
   supplier: nullableString,
   murti_design: nullableString,
   stored_at: nullableString,
-  roundup_amount: nullableNumber,
+  roundup_amount: roundupNumber,
   images: z
     .array(
       z.object({
@@ -60,7 +61,7 @@ export const bookingSchema = z.object({
 
 export const deliverySchema = z.object({
   booking_status: z.literal("delivered"),
-  roundup_amount: nullableNumber,
+  roundup_amount: roundupNumber,
 });
 
 export const murtiImageSchema = z.object({

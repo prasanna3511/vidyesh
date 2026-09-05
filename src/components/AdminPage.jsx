@@ -861,6 +861,7 @@ const AdminPage = ({ onAddBappa }) => {
     booked_by: item.booked_by,
     images: murtiImagesData[item.id] || [],
     discount_price: item.discount_price,
+    roundup_amount: item.roundup_amount,
     date: item.booking_date || null,
     supplier: item.supplier || '',
     murti_design: item.murti_design || '',
@@ -1211,6 +1212,16 @@ const AdminPage = ({ onAddBappa }) => {
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRoundUpBappa(bappa);
+                          }}
+                          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:bg-emerald-700"
+                          title={bappa.booking_status === 'delivered' ? 'Edit Round-up' : 'Mark Delivered'}
+                        >
+                          {bappa.booking_status === 'delivered' ? 'Round-up' : 'Deliver'}
+                        </button>
                       </div>
 
                       <div className="flex space-x-4">
@@ -1241,6 +1252,11 @@ const AdminPage = ({ onAddBappa }) => {
                           <p className="font-bold text-green-600">₹{bappa.price}</p>
                           <div>
                             <p className="text-sm text-blue-700">Discount Price: {bappa.discount_price ? `₹${bappa.discount_price}` : '-'}</p>
+                            {bappa.booking_status === 'delivered' && (
+                              <p className="text-sm text-emerald-700">
+                                Round-up: {bappa.roundup_amount !== null && bappa.roundup_amount !== undefined ? `₹${bappa.roundup_amount}` : '-'}
+                              </p>
+                            )}
                           </div>
 
                           {booking && (
@@ -1350,7 +1366,18 @@ const AdminPage = ({ onAddBappa }) => {
                           >
                             Approve
                           </button>
+                          <button
+                            className="mt-3 ml-2 rounded-lg bg-emerald-600 px-4 py-2 text-white transition-all hover:bg-emerald-700"
+                            onClick={() => setRoundUpBappa(bappa)}
+                          >
+                            Deliver
+                          </button>
                         </>
+                      )}
+                      {bappa.booking_status === 'delivered' && (
+                        <p className="mt-3 text-sm font-medium text-emerald-700">
+                          Round-up: {bappa.roundup_amount !== null && bappa.roundup_amount !== undefined ? `₹${bappa.roundup_amount}` : 'Not set'}
+                        </p>
                       )}
                     </div>
                   </div>
