@@ -264,7 +264,8 @@ export const updateDelivery = asyncHandler(async (req, res) => {
   const result = await pool.query(
     `UPDATE murti_history
      SET booking_status = $1,
-         roundup_amount = $2
+         roundup_amount = $2,
+         paid_amount = COALESCE(paid_amount, 0) - COALESCE(roundup_amount, 0) + COALESCE($2, 0)
      WHERE id = $3
      RETURNING *`,
     [payload.booking_status, payload.roundup_amount ?? null, req.params.id]

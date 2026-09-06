@@ -946,6 +946,9 @@ const AdminPage = ({ onAddBappa }) => {
     bappas.filter((b) => b.booking_status !== 'booked' && b.booking_status !== 'pending')
   );
   const allFilteredBappas = applyFilters(bappas);
+  const collectionBappas = allFilteredBappas.filter(
+    (bappa) => bappa.booking_status !== 'booked' && bappa.booking_status !== 'delivered'
+  );
 
   const handleApprove = async (id, discountedAmount) => {
     try {
@@ -1420,12 +1423,12 @@ const AdminPage = ({ onAddBappa }) => {
                 </tr>
               </thead>
               <tbody>
-                {allFilteredBappas.length === 0 ? (
+                {collectionBappas.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="p-3 text-center text-gray-500">No data available for the current filters.</td>
                   </tr>
                 ) : (
-                  allFilteredBappas.map((bappa, idx) => (
+                  collectionBappas.map((bappa, idx) => (
                     <tr key={bappa.id} className="border-t">
                       <td className="p-3">{idx + 1}</td>
                       <td className="p-3">{bappa.name}</td>
