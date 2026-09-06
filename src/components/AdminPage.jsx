@@ -15,6 +15,7 @@ import {
   Pencil,
   X,
   MessageSquareText,
+  CheckCircle2,
 } from 'lucide-react';
 import AddBappaModal from './AddBappaModal';
 import LoginModal from './LoginModal';
@@ -940,15 +941,20 @@ const AdminPage = ({ onAddBappa }) => {
   };
 
   const bookedBappas = applyFilters(
-    bappas.filter((b) => b.booking_status === 'booked' || b.booking_status === 'delivered')
+    bappas.filter((b) => b.booking_status === 'booked')
   ).filter(matchesBookedSuggestionFilter);
   const availableBappas = applyFilters(
-    bappas.filter((b) => b.booking_status !== 'booked' && b.booking_status !== 'pending')
+    bappas.filter((b) => b.booking_status === 'available')
+  );
+  const deliveredBappas = applyFilters(
+    bappas.filter((b) => b.booking_status === 'delivered')
   );
   const allFilteredBappas = applyFilters(bappas);
   const collectionBappas = allFilteredBappas.filter(
     (bappa) => bappa.booking_status !== 'booked' && bappa.booking_status !== 'delivered'
   );
+  const tallyBappas = filterStatus === 'delivered' ? deliveredBappas : collectionBappas;
+  const tallyTotalsBappas = filterStatus === 'delivered' ? deliveredBappas : bookedBappas;
 
   const handleApprove = async (id, discountedAmount) => {
     try {
@@ -968,10 +974,10 @@ const AdminPage = ({ onAddBappa }) => {
   const getBookingDetails = (bappaId) =>
     bookings.find((booking) => booking.bappaId === bappaId);
 
-  const totalFinal = bookedBappas.reduce((sum, b) => sum + Number(b.price || 0), 0);
-  const totalPaid = bookedBappas.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0);
+  const totalFinal = tallyTotalsBappas.reduce((sum, b) => sum + Number(b.price || 0), 0);
+  const totalPaid = tallyTotalsBappas.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0);
   const totalRemaining = totalFinal - totalPaid;
-  const totalDiscounted = bookedBappas.reduce(
+  const totalDiscounted = tallyTotalsBappas.reduce(
     (sum, b) => sum + Number(b.discount_price || b.price || 0),
     0
   );
@@ -1040,7 +1046,7 @@ const AdminPage = ({ onAddBappa }) => {
         </div>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
         <div className="rounded-xl border-l-4 border-blue-500 bg-white p-6 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
@@ -1068,6 +1074,16 @@ const AdminPage = ({ onAddBappa }) => {
               <p className="text-3xl font-bold text-orange-600">{availableBappas.length}</p>
             </div>
             <IndianRupee className="h-12 w-12 text-orange-500" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border-l-4 border-emerald-500 bg-white p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Delivered</p>
+              <p className="text-3xl font-bold text-emerald-600">{deliveredBappas.length}</p>
+            </div>
+            <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           </div>
         </div>
       </div>
@@ -1392,6 +1408,38 @@ const AdminPage = ({ onAddBappa }) => {
       </div>
 
       <div className="mt-8 rounded-xl bg-white p-6 shadow-lg">
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h3 className="flex items-center space-x-2 text-2xl font-bold text-gray-800">
+            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+            <span>Delivered Murti</span>
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {deliveredBappas.length === 0 ? (
+            <p className="col-span-full py-8 text-center text-gray-500">No delivered murti found for the current filters.</p>
+          ) : (
+            deliveredBappas.map((bappa, index) => (
+              <div key={bappa.id} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-gray-800">{bappa.name}</h4>
+                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">
+                    Delivered
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">ID: #{index + 1}</p>
+                <p className="text-sm text-gray-600">{bappa.size}</p>
+                <p className="font-bold text-green-600">₹{bappa.price}</p>
+                <p className="mt-2 text-sm font-medium text-emerald-700">
+                  Round-up: {bappa.roundup_amount !== null && bappa.roundup_amount !== undefined ? `₹${bappa.roundup_amount}` : 'Not set'}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-xl bg-white p-6 shadow-lg">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h3 className="text-2xl font-bold text-gray-800">Murti Tally Summary</h3>
           <button
@@ -1423,12 +1471,12 @@ const AdminPage = ({ onAddBappa }) => {
                 </tr>
               </thead>
               <tbody>
-                {collectionBappas.length === 0 ? (
+                {tallyBappas.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="p-3 text-center text-gray-500">No data available for the current filters.</td>
                   </tr>
                 ) : (
-                  collectionBappas.map((bappa, idx) => (
+                  tallyBappas.map((bappa, idx) => (
                     <tr key={bappa.id} className="border-t">
                       <td className="p-3">{idx + 1}</td>
                       <td className="p-3">{bappa.name}</td>

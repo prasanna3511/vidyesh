@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getImageUrl } from '../utils/murti.js';
 
 const RoundUpModal = ({ bappa, onClose, onSubmit }) => {
   const discountOrPrice = Number(bappa?.discount_price ?? bappa?.price ?? 0);
   const paidAmount = Number(bappa?.paid_amount ?? 0);
   const remainingAmount = Math.max(discountOrPrice - paidAmount, 0);
-  const [roundupAmount, setRoundupAmount] = useState(
-    bappa?.roundup_amount !== null && bappa?.roundup_amount !== undefined
-      ? Number(bappa.roundup_amount)
-      : remainingAmount
-  );
+  const [roundupAmount, setRoundupAmount] = useState(remainingAmount);
+
+  useEffect(() => {
+    setRoundupAmount(remainingAmount);
+  }, [remainingAmount, bappa?.id]);
 
   if (!bappa) return null;
 
